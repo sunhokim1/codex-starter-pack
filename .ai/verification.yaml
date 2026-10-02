@@ -1,0 +1,8 @@
+# 프로젝트에서 실제 사용하는 명령만 설정한다. null은 미설정이며 통과가 아니다.
+# 변경과 관련된 사용 가능한 명령만 실행하고 결과와 미실행 사유를 보고한다.
+commands:
+  test: null
+  lint: null
+  typecheck: null
+  build: null
+  acceptance: null

@@ -1,0 +1,22 @@
+# 선언적 지침. 실제 모델은 models.yaml에서 조회한다.
+routing:
+  default_role: main
+  selection:
+    small_and_clear: worker
+    ordinary_development: main
+    complex_architecture_or_multiple_subsystems: escalation
+  # 무조건 worker부터 시작하지 않는다. 실패 또는 예상 밖 복잡도에서 한 단계만 승격한다.
+  escalation:
+    worker: main
+    main: escalation
+    # 최상위 역할에서 막히면 미해결 근거를 보고한다. 무한 재시도하지 않는다.
+    escalation: null
+
+# 세부 decision tree 없이 기본값만 둔다. provider 지원 값은 연결 시 확인한다.
+reasoning:
+  worker:
+    default: low
+  main:
+    default: medium
+  escalation:
+    default: high

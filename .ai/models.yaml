@@ -1,0 +1,22 @@
+# 실제 모델 매핑의 source of truth. API 연결 시 provider의 ID를 확인한다.
+models:
+  worker:
+    label: Luna
+    provider: openai
+    family: gpt-6-luna
+    version: "6.0"
+    model_id: gpt-6-luna
+
+  main:
+    label: Sol
+    provider: openai
+    family: gpt-6-sol
+    version: "6.1"
+    model_id: gpt-6.1-sol
+
+  escalation:
+    label: Astra
+    provider: openai
+    family: gpt-6-astra
+    version: "6.0"
+    model_id: gpt-6-astra
