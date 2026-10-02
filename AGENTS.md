@@ -32,6 +32,20 @@
 - `.ai/routing.yaml`: 역할 선택, 기본 reasoning, 한 단계 escalation.
 - `.ai/verification.yaml`: 프로젝트에 존재하는 검증 명령.
 
+## Worker 실행
+
+작고 명확한 구현은 worker 하나에 배정한다. 독립적인 작업 여러 개는 `.ai/routing.yaml`의
+실행 기준에 따라 worker를 병렬로 배정하고 main이 결과 취합·검토와 통합 검증을 맡는다.
+Codex의 하위 에이전트 도구가 있으면 실제로 사용한다. 별도 API 실행기는 필요하지 않다.
+생성할 때 `.ai/models.yaml`에서 역할의 model_id를 읽어 모델 인수에 명시하고,
+reasoning은 routing의 기본값을 사용한다. 이름만 worker로 붙이고 부모 모델을 상속하지 않는다.
+현재 호스트 모델은 자동 변경되지 않는다. main 매핑과 다른 경우 현재 모델을 main이라고 오인하지 말고,
+지원되면 매핑한 main 에이전트에 조율을 맡기거나 실제 사용 모델과 차이를 밝힌다.
+각 worker에게 담당 파일·목표·필요한 context만 전달한다. 다른 worker의 변경을 되돌리지 않는다.
+중첩 분할과 무한 재시도는 하지 않는다. 검증 실패는 원인을 확인하고 필요하면 한 단계 승격한다.
+모델 지정/하위 에이전트 기능이 없거나 지정 모델을 사용할 수 없으면 그 한계를 알리고
+현재 모델로 순차 처리한다. 실행하지 않은 worker/병렬 처리를 실행했다고 보고하지 않는다.
+
 ## 완료 조건
 
 요구사항을 충족하고 변경에 관련된 실제 검증이 통과해야 한다.
@@ -40,4 +54,4 @@
 구조 변경은 navigation 정확성을 유지하고, 중요한 architecture 변화는 관련 문서에 반영한다.
 
 보조 policies/agents/templates/docs는 해당 작업에 필요할 때만 읽는다.
-선택 기능은 `.ai/config.yaml`에서 모두 비활성이다. 기본 작업에 이력 기록이나 별도 orchestration을 요구하지 않는다.
+선택 기능은 `.ai/config.yaml`에서 모두 비활성이다. native worker 배정 외에 이력 기록이나 별도 orchestration을 요구하지 않는다.

@@ -12,6 +12,20 @@ routing:
     # 최상위 역할에서 막히면 미해결 근거를 보고한다. 무한 재시도하지 않는다.
     escalation: null
 
+# 모델 역할과 실행 방식을 별도로 판단한다. 아래 기준은 native agent 도구로 실행한다.
+execution:
+  backend: native_subagents
+  coordinator_role: main
+  worker_role: worker
+  small_task: single_worker
+  independent_small_tasks: parallel_workers
+  dependent_or_overlapping_tasks: sequential
+  max_parallel_workers: 2
+  # 공유 interface/schema 변경 또는 결과 의존성이 있으면 병렬로 분리하지 않는다.
+  require_disjoint_write_ownership: true
+  model_source: .ai/models.yaml
+  unsupported_runtime: disclose_and_run_sequentially
+
 # 세부 decision tree 없이 기본값만 둔다. provider 지원 값은 연결 시 확인한다.
 reasoning:
   worker:
