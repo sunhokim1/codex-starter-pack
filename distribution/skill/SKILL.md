@@ -15,9 +15,30 @@ Run `python <skill-dir>/scripts/scaffold.py --target <project-dir> --dry-run`, t
 without `--dry-run` if the preflight passes. The script never overwrites existing files.
 If Python is unavailable, preflight destination conflicts and copy with native tools.
 
-Read the resulting AGENTS.md and PROJECT.md. Preserve scaffold-only uninitialized status.
-If project requirements were supplied, record them in PROJECT.md. Check template completeness
-and report results. Add project-specific documents only when actual architecture needs them.
+Read the resulting AGENTS.md and PROJECT.md. Initialize confirmed project facts as described below;
+leave empty projects uninitialized. Record supplied requirements in PROJECT.md. Check template
+completeness and report results. Add project-specific documents only when actual architecture needs them.
+
+## Initialize project facts
+
+After copying or merging, inspect the target's top-level folders and relevant manifests/build
+configuration. Follow existing nested AGENTS.md where applicable; inspect enough code to confirm
+major subsystem boundaries and entry points without inventorying every file.
+
+- Fill unset PROJECT.md fields with confirmed stack, runtime and supplied goals/constraints.
+  Leave unsupported facts unset; preserve existing project facts and user choices.
+- Populate the root AGENTS.md map with confirmed major subsystem paths, entry points, tests,
+  docs/schema and existing nested AGENTS.md. Preserve existing rows; correct stale paths only
+  with evidence. Use relative paths and leave absent areas uninitialized. Do not list every file
+  or create nested instructions merely to fill the table.
+- Fill unset verification.yaml commands only from actual project scripts/configuration or
+  documented commands corroborated by the project. For example, use the package manager
+  established by the project with scripts that exist in package.json. Do not invent commands
+  from a framework name, replace configured commands, install dependencies or run builds/tests
+  merely to initialize facts. Leave ambiguous commands unset and explain the gap.
+
+Report which facts and command definitions were populated and their source files. A discovered
+command is configured, not executed or passed; report execution separately if requested.
 
 ## Existing projects
 
