@@ -1,32 +1,28 @@
-# 선언적 지침. 실제 모델은 models.yaml에서 조회한다.
+# 단독 모델 선택 지침. 실제 모델 ID는 models.yaml이 유일한 기준이다.
 routing:
-  default_role: main
+  default_role: worker
   selection:
-    small_and_clear: worker
-    ordinary_development: main
-    complex_architecture_or_multiple_subsystems: escalation
-  # 무조건 worker부터 시작하지 않는다. 실패 또는 예상 밖 복잡도에서 한 단계만 승격한다.
+    clear_implementation_cost_priority: worker
+    analysis_debugging_or_design: main
+    speed_or_failure_risk_priority: main
+  # 현재 모델로 해결하기 어려운 미해결 문제/검증 실패에서만 순차 승격한다.
   escalation:
     worker: main
     main: escalation
-    # 최상위 역할에서 막히면 미해결 근거를 보고한다. 무한 재시도하지 않는다.
     escalation: null
 
-# 모델 역할과 실행 방식을 별도로 판단한다. 아래 기준은 native agent 도구로 실행한다.
 execution:
-  backend: native_subagents
-  coordinator_role: main
-  worker_role: worker
-  small_task: single_worker
-  independent_small_tasks: parallel_workers
-  dependent_or_overlapping_tasks: sequential
-  max_parallel_workers: 2
-  # 공유 interface/schema 변경 또는 결과 의존성이 있으면 병렬로 분리하지 않는다.
-  require_disjoint_write_ownership: true
+  backend: current_model
+  orchestration: false
+  automatic_delegation: false
+  parallel_agents: false
+  verification_owner: current_model
   model_source: .ai/models.yaml
-  unsupported_runtime: disclose_and_run_sequentially
+  # YAML은 채팅 모델을 바꾸지 않는다. 하위 에이전트로 전환을 대신하지 않는다.
+  unsupported_model_switch: disclose_and_request_manual_selection
+  report_actual_model: true
+  user_model_request_takes_priority: true
 
-# 세부 decision tree 없이 기본값만 둔다. provider 지원 값은 연결 시 확인한다.
 reasoning:
   worker:
     default: low

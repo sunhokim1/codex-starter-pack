@@ -10,7 +10,7 @@ python scripts/package_starter.py
 기본 출력은 `universal-ai-starter.zip`이다. 임시 ZIP 검증에 실패하면 기존 ZIP을 보존한다.
 점검만 하려면 `--check`, 별도 출력 경로는 `--output <path>`를 사용한다.
 
-원본 기준은 repository의 27개 템플릿 파일, `distribution/skill/`의 스킬 지침·복사 스크립트,
+원본 기준은 repository의 핵심 파일 7개, `distribution/skill/`의 스킬 지침·복사 스크립트,
 `distribution/manifest.json`의 포함 목록이다. 버전은 `.ai/config.yaml`의 starter.version을 따른다.
 내용이 바뀐 릴리스에서는 이 버전을 갱신한다. ZIP 내부 release.json이 버전과 파일 해시를 기록한다.
 개인 스킬 교체와 GitHub 업로드는 수행하지 않는다. 각각 필요할 때 명시적으로 실행한다.

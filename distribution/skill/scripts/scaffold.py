@@ -1,5 +1,7 @@
 """Copy the bundled starter with complete conflict preflight and no overwrites."""
 import argparse
+import hashlib
+import json
 from pathlib import Path
 import sys
 
@@ -12,8 +14,23 @@ def main():
     source = Path(__file__).resolve().parents[1] / 'assets' / 'starter'
     target = Path(args.target).expanduser().resolve()
     files = sorted(p for p in source.rglob('*') if p.is_file())
-    if len(files) != 27:
-        print('ERROR: template must contain exactly 27 files.', file=sys.stderr)
+    if not files:
+        print('ERROR: template is empty.', file=sys.stderr)
+        return 2
+    # Use the release manifest rather than a fixed file count.
+    release = source.parents[1] / 'release.json'
+    try:
+        hashes = json.loads(release.read_text(encoding='utf-8'))['sha256']
+        expected = {}
+        for name, digest in hashes.items():
+            parts = name.split('/')
+            if parts[1:3] == ['assets', 'starter']:
+                expected['/'.join(parts[3:])] = digest
+        actual = {p.relative_to(source).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
+        if not expected or actual != expected:
+            raise ValueError('template files do not match release metadata')
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        print(f'ERROR: invalid template release: {error}', file=sys.stderr)
         return 2
     if target.exists() and not target.is_dir():
         print('ERROR: target is not a directory.', file=sys.stderr)

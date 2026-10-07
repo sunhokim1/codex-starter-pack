@@ -5,7 +5,7 @@ description: Apply the user's framework-neutral Universal AI Starter to a new pr
 
 # Universal AI Starter
 
-Strong models, thin harness. Use the bundled 27-file snapshot in `assets/starter/`.
+Strong models, thin harness. Use the bundled seven core files in `assets/starter/`.
 User requirements and existing project instructions take precedence over template defaults.
 
 ## Apply
@@ -16,8 +16,8 @@ without `--dry-run` if the preflight passes. The script never overwrites existin
 If Python is unavailable, preflight destination conflicts and copy with native tools.
 
 Read the resulting AGENTS.md and PROJECT.md. Preserve scaffold-only uninitialized status.
-If project requirements were supplied, record them in PROJECT.md and use the relevant preset
-only if helpful. Check template completeness and report results.
+If project requirements were supplied, record them in PROJECT.md. Check template completeness
+and report results. Add project-specific documents only when actual architecture needs them.
 
 ## Existing projects
 
@@ -30,18 +30,15 @@ with the user; unrelated files need no repository-wide scan.
 
 The core is AGENTS.md, PROJECT.md, models.yaml, routing.yaml and verification.yaml.
 Models are role-mapped; configuration does not switch the current chat model.
-Supporting policies, agent perspectives, presets and docs are read only when useful.
+Generic policy, role, preset and empty architecture documents are not bundled.
 History, integrations, custom routing, training, memory, capsules and evidence logs are
 optional/inactive. Do not enable them or introduce a separate API orchestrator for a scaffold request.
 Do not install frameworks or connect APIs for a scaffold-only request.
 Project copies are independent snapshots; skill changes do not update existing projects.
 
-## Native worker execution after adoption
+## Development after adoption
 
-Follow the copied AGENTS.md and routing.yaml during development: small implementations use
-one worker; independent small implementations may use at most two parallel workers, with
-main coordinating, reviewing and verifying. Read the actual model_id from models.yaml and
-explicitly specify it when spawning a native subagent; do not silently inherit the host model.
-Use minimal task context and disjoint file ownership. Dependencies/shared interfaces run serially.
-If native model selection is unavailable, disclose that and work sequentially with the current
-model. This instruction does not switch the current chat model or install an API runtime.
+For development, follow the copied `AGENTS.md` and reuse unchanged instructions and settings already
+read in the session. One selected model implements and verifies; do not create subagents,
+orchestrate Sol+Luna, or run agents in parallel. Model escalation is sequential and requires
+actual runtime support or manual model selection. The current chat model does not switch automatically.
