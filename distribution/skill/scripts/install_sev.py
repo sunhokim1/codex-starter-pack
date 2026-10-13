@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -45,7 +46,14 @@ def checked(command):
 
 def verify_bundle(bundle):
     release = json.loads((bundle/'release.json').read_text(encoding='utf-8'))
+    if release.get('version') != '0.3.0' or not release.get('sha256'):
+        raise ValueError('unexpected or empty starter release')
     for name, digest in release['sha256'].items():
+        if (not isinstance(name, str) or not name.startswith('universal-ai-starter/')
+                or '\\' in name or ':' in name
+                or any(p in ('', '.', '..') for p in name.split('/'))
+                or not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)):
+            raise ValueError('unsafe release path or hash')
         relative = Path(*name.split('/')[1:])
         if '..' in relative.parts or relative.is_absolute():
             raise ValueError('unsafe release path')
@@ -57,9 +65,21 @@ def verify_bundle(bundle):
     return release['version']
 
 
+def validate_project_paths(target):
+    # Reject links/junctions before any runtime or project writes.
+    for leaf in (target/'AGENTS.md', target/'.ai/models.yaml', target/'.ai/sev.json'):
+        for path in (leaf, *leaf.parents):
+            if path.is_symlink() or (path.exists() and
+                    getattr(path.lstat(), 'st_file_attributes', 0) & 0x400):
+                raise ValueError('project path contains a link or reparse point: ' + str(path))
+        if leaf.exists() and not leaf.is_file():
+            raise ValueError('project file path is not a file: ' + str(leaf))
+
+
 def install(target, runtime, skills, bundle, model_source=None, autostart=True):
     if sys.version_info < (3, 11):
         raise ValueError('Python 3.11 or newer is required')
+    validate_project_paths(Path(target).absolute())
     target, runtime, skills, bundle = map(lambda p: Path(p).resolve(), (target,runtime,skills,bundle))
     version = verify_bundle(bundle)
     if not (target/'AGENTS.md').is_file() or not (target/'.ai/models.yaml').is_file():
@@ -82,7 +102,7 @@ def install(target, runtime, skills, bundle, model_source=None, autostart=True):
     runner = skills/'single-model-runner'
     (runner/'scripts').mkdir(parents=True,exist_ok=True)
     shutil.copy2(bundle/'assets/runner/run.py',runner/'scripts/run.py')
-    shutil.copy2(bundle/'assets/runner/SKILL.md',runner/'SKILL.md')
+    shutil.copy2(bundle/'assets/runner/SKILL.template.md',runner/'SKILL.md')
     config = {'version':version,'python':str(python),'service':str(service),'state':str(state),
               'runner':str(runner/'scripts/run.py'),'skills':str(skills)}
     # Service preparation must succeed before enabling the project's development flow.

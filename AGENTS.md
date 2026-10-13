@@ -13,7 +13,7 @@
 | Data / Storage | Not initialized. | — | — | — |
 | Services / Backend | Not initialized. | — | — | — |
 | Tests | Not initialized. | — | — | — |
-| Infrastructure | starter 배포: scripts/package_starter.py (원본 관리 저장소만) | tests/test_package_starter.py (원본만) | distribution/manifest.json, scripts/README.md | — |
+| Infrastructure | starter 배포/Windows 설치: scripts/package_starter.py, scripts/install_from_github.ps1 (원본 관리 저장소만) | tests/test_package_starter.py, tests/test_github_installer.py, tests/test_install_sev.py (원본만) | distribution/manifest.json, scripts/README.md | — |
 
 해당 영역 작업 시 map이 연결한 nested AGENTS.md부터 읽는다. 개별 파일 목록은 기록하지 않는다.
 새 subsystem이나 중요한 architecture boundary가 생길 때 map을 갱신하고,

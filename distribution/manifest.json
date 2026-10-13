@@ -15,7 +15,7 @@
     "scripts/install_sev.py": "distribution/skill/scripts/install_sev.py",
     "scripts/bootstrap.ps1": "distribution/skill/scripts/bootstrap.ps1",
     "assets/runner/run.py": "experiments/single-model-runner/scripts/run.py",
-    "assets/runner/SKILL.md": "distribution/skill/runner-SKILL.md",
+    "assets/runner/SKILL.template.md": "distribution/skill/runner-SKILL.md",
     "assets/sev/selector.py": "experiments/local-model-selector/selector.py",
     "assets/sev/sev_candidate.py": "experiments/local-model-selector/sev_candidate.py",
     "assets/sev/sev_long_candidate.py": "experiments/local-model-selector/sev_long_candidate.py",

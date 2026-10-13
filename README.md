@@ -53,6 +53,20 @@ architecture/데이터 구조 변경 또는 높은 실패·재작업 위험에�
 
 ## 시작과 재사용
 
+Windows에서는 PowerShell에 아래 한 줄을 붙여넣고 프로젝트 폴더를 선택한다.
+ZIP 다운로드·스킬 등록·Python/SEV 설치·실행기 연결까지 자동으로 처리한다.
+
+```powershell
+irm https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/main/scripts/install_from_github.ps1 | iex
+```
+
+폴더 선택창에서 프로젝트를 선택한다(MTA 환경에서는 경로 입력, 빈 입력은 취소).
+경로를 알고 있으면 `-Target 'C:\projects\my-project'`를 붙인다. 취소하면 프로젝트 파일을 쓰지 않는다.
+공개 저장소에서 내려받으므로 GitHub 로그인이나 GitHub CLI는 필요 없다.
+0.3.0 ZIP의 경로·스킬 이름·전체 SHA256을 검사한 뒤 개인 스킬과 Python/SEV를 설치한다.
+이미 채택된 프로젝트는 기존 핵심 파일을 보존하고 SEV만 연결한다. 그 밖의 파일 충돌은
+덮어쓰지 않고 중단하므로 핵심 파일을 먼저 안전하게 병합한 뒤 다시 실행한다.
+
 프로젝트를 선택하면 PROJECT.md에 목표·스택·플랫폼·제약을 기록한다.
 선택한 스택의 검증 명령과 subsystem map을 채운다. 스택을 선택하지 않은 상태에서 framework를 설치하지 않는다.
 

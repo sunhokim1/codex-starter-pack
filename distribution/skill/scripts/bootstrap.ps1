@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Target)
+param([Parameter(Mandatory=$true)][string]$Target, [string]$ScriptDirectory = $PSScriptRoot)
 $ErrorActionPreference = 'Stop'
 $starterPython = $null
 foreach ($starterCandidate in @((Join-Path $env:LOCALAPPDATA 'Programs/Python/Python311/python.exe'), 'python.exe')) {
@@ -13,5 +13,10 @@ if (-not $starterPython) {
     $starterPython = Join-Path $env:LOCALAPPDATA 'Programs/Python/Python311/python.exe'
     if (-not (Test-Path -LiteralPath $starterPython)) { throw 'Python installed at an unexpected path; provide its path to scaffold.py.' }
 }
-& $starterPython (Join-Path $PSScriptRoot 'scaffold.py') --target $Target
-if ($LASTEXITCODE -ne 0) { throw 'Starter application incomplete. Preserve conflicting project files and run install_sev.py after merging.' }
+if ((Test-Path -LiteralPath (Join-Path $Target 'AGENTS.md') -PathType Leaf) -and
+    (Test-Path -LiteralPath (Join-Path $Target '.ai/models.yaml') -PathType Leaf)) {
+    & $starterPython (Join-Path $ScriptDirectory 'install_sev.py') --target $Target
+} else {
+    & $starterPython (Join-Path $ScriptDirectory 'scaffold.py') --target $Target
+}
+if ($LASTEXITCODE -ne 0) { throw 'Starter/SEV installation failed. Existing project files were preserved; merge conflicting core files and retry.' }

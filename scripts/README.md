@@ -12,9 +12,19 @@ python scripts/package_starter.py
 
 원본 기준은 repository의 핵심 파일 7개, `distribution/skill/`의 스킬 지침·복사 스크립트,
 `distribution/manifest.json`의 포함 목록이다. 버전은 `.ai/config.yaml`의 starter.version을 따른다.
-내용이 바뀐 릴리스에서는 이 버전을 갱신한다. ZIP 내부 release.json이 버전과 파일 해시를 기록한다.
+ZIP 내부 release.json이 버전과 파일 해시를 기록한다. 현재 배포 버전은 0.3.0으로 유지한다.
 개인 스킬 교체와 GitHub 업로드는 수행하지 않는다. 각각 필요할 때 명시적으로 실행한다.
 
 도구 검증: `python -m unittest discover -s tests -v`.
 이 배포 도구와 그 테스트는 원본 관리 저장소 전용이며, 생성되는 프로젝트에는 포함하지 않는다.
 프로젝트 자체의 실제 검증 명령은 `.ai/verification.yaml`에 설정한다.
+
+## Windows 설치기
+
+`install_from_github.ps1`은 전체를 붙여넣을 수 있는 독립 명령 블록이다.
+`-Target <folder>` 또는 폴더 선택 후 공개 GitHub ZIP 다운로드(인증/CLI 불필요),
+경로·릴리스·해시 확인, 스킬 교체, 번들 bootstrap 순으로 실행한다. 다운로드 실패나
+검증 실패는 기존 스킬을 교체하지 않는다. 대상 프로젝트 핵심 파일 충돌은 보존하며,
+이미 AGENTS.md와 .ai/models.yaml이 있는 프로젝트는 install_sev.py로 바로 연결한다.
+runner 지침은 패키지에서 `SKILL.template.md`로 보관하고 설치 때만 `SKILL.md`로 만든다.
+실제 인증·winget·코딩 호출 없이 PowerShell Parser와 모의 부트스트랩/ZIP 테스트를 실행한다.
