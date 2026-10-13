@@ -59,7 +59,8 @@
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         $client = New-Object Net.WebClient
         try {
-            $bytes = $client.DownloadData('https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/main/universal-ai-starter.zip')
+            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/main/universal-ai-starter.zip?fresh=' + [DateTime]::UtcNow.Ticks
+            $bytes = $client.DownloadData($url)
             if ($bytes.Length -eq 0 -or $bytes.Length -gt 32MB) { throw 'Unexpected ZIP download size.' }
             return ,$bytes
         } finally { $client.Dispose() }
