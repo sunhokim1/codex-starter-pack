@@ -62,8 +62,10 @@ Project copies are independent snapshots; skill changes do not update existing p
 For development, follow the copied `AGENTS.md` and reuse unchanged instructions and settings already
 read in the session. Before implementation, use copied routing.yaml to briefly assess task fit,
 total time/tokens, uncertainty, failure impact, verifiability and rework risk; there is no fixed
-default model or mandatory Luna-first attempt. Honor the user's model choice. With no override,
-recommend Sol when selection evidence is insufficient or failure impact is high. File count and
+default model or mandatory Luna-first attempt. Honor the user's model choice.
+Assess only the currently available user request and project information. Do not perform broad
+code exploration, run separate agents or add classification steps solely to choose a model.
+Without a user override, recommend Sol when selection evidence is insufficient or failure impact is high. File count and
 request length alone do not determine the model. Do not add classifier calls or scoring machinery.
 One selected model explores, designs, implements, reviews and verifies; do not create subagents,
 orchestrate Sol+Luna, or run agents in parallel. Model escalation is sequential and requires

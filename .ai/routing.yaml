@@ -3,6 +3,8 @@ routing:
   # 고정 기본 모델 없음. 구현 전에 작업 적합도와 예상 전체 효율로 선택한다.
   selection:
     before_implementation: true
+    evidence: currently_available_user_request_and_project_information_only
+    selection_only_excludes: [broad_code_exploration, separate_agents, additional_classification_steps]
     user_model_request_takes_priority: true
     consider: [difficulty, uncertainty, failure_impact, verifiability, rework_risk, total_time_and_tokens]
     worker: clear_scope_existing_pattern_local_or_independent_low_impact_clear_checks_low_rework
