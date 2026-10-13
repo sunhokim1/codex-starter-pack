@@ -11,6 +11,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target', required=True)
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--adopt', action='store_true', help='preserve existing regular core files; copy missing files only')
     args = parser.parse_args()
     source = Path(__file__).resolve().parents[1] / 'assets' / 'starter'
     target = Path(args.target).expanduser().resolve()
@@ -40,7 +41,8 @@ def main():
     for original in files:
         dest = target / original.relative_to(source)
         if dest.exists() or dest.is_symlink():
-            conflicts.append(str(dest))
+            if not (args.adopt and dest.is_file() and not dest.is_symlink()):
+                conflicts.append(str(dest))
         parent = dest.parent
         while parent != target:
             if parent.is_symlink() or (parent.exists() and not parent.is_dir()):
@@ -54,14 +56,19 @@ def main():
             print(path, file=sys.stderr)
         return 2
     if args.dry_run:
-        print(f'OK: would create {len(files)} files in {target}')
+        count=sum(not (target/p.relative_to(source)).exists() for p in files)
+        print(f'OK: would create {count} files in {target}')
         return 0
+    created = 0
     for original in files:
         dest = target / original.relative_to(source)
+        if args.adopt and dest.exists():
+            continue
         dest.parent.mkdir(parents=True, exist_ok=True)
         with dest.open('xb') as output:
             output.write(original.read_bytes())
-    print(f'OK: created {len(files)} files in {target}')
+        created += 1
+    print(f'OK: created {created} files in {target}')
     return subprocess.call([sys.executable, str(Path(__file__).with_name('install_sev.py')),
                             '--target',str(target)])
 

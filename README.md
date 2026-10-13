@@ -64,8 +64,8 @@ irm https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/main/scripts/
 경로를 알고 있으면 `-Target 'C:\projects\my-project'`를 붙인다. 취소하면 프로젝트 파일을 쓰지 않는다.
 공개 저장소에서 내려받으므로 GitHub 로그인이나 GitHub CLI는 필요 없다.
 0.3.0 ZIP의 경로·스킬 이름·전체 SHA256을 검사한 뒤 개인 스킬과 Python/SEV를 설치한다.
-이미 채택된 프로젝트는 기존 핵심 파일을 보존하고 SEV만 연결한다. 그 밖의 파일 충돌은
-덮어쓰지 않고 중단하므로 핵심 파일을 먼저 안전하게 병합한 뒤 다시 실행한다.
+기존 프로젝트는 핵심 파일을 덮어쓰지 않고 없는 파일만 추가한 뒤 SEV를 연결한다.
+링크·디렉터리 등 파일 경로 충돌은 중단하며 기존 데이터는 보존한다.
 
 프로젝트를 선택하면 PROJECT.md에 목표·스택·플랫폼·제약을 기록한다.
 선택한 스택의 검증 명령과 subsystem map을 채운다. 스택을 선택하지 않은 상태에서 framework를 설치하지 않는다.

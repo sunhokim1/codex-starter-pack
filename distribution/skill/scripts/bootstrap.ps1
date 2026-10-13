@@ -17,6 +17,6 @@ if ((Test-Path -LiteralPath (Join-Path $Target 'AGENTS.md') -PathType Leaf) -and
     (Test-Path -LiteralPath (Join-Path $Target '.ai/models.yaml') -PathType Leaf)) {
     & $starterPython (Join-Path $ScriptDirectory 'install_sev.py') --target $Target
 } else {
-    & $starterPython (Join-Path $ScriptDirectory 'scaffold.py') --target $Target
+    & $starterPython (Join-Path $ScriptDirectory 'scaffold.py') --target $Target --adopt
 }
 if ($LASTEXITCODE -ne 0) { throw 'Starter/SEV installation failed. Existing project files were preserved; merge conflicting core files and retry.' }
