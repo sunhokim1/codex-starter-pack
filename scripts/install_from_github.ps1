@@ -59,7 +59,8 @@
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         $client = New-Object Net.WebClient
         try {
-            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/main/universal-ai-starter.zip?fresh=' + [DateTime]::UtcNow.Ticks
+            # Pin this v0.3.0 installer to its verified release, avoiding branch-cache skew.
+            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/60541b99d8ce6c062567e1a69c4ef24169154be6/universal-ai-starter.zip'
             $bytes = $client.DownloadData($url)
             if ($bytes.Length -eq 0 -or $bytes.Length -gt 32MB) { throw 'Unexpected ZIP download size.' }
             return ,$bytes
