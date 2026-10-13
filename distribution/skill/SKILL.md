@@ -60,6 +60,17 @@ Project copies are independent snapshots; skill changes do not update existing p
 ## Development after adoption
 
 For development, follow the copied `AGENTS.md` and reuse unchanged instructions and settings already
-read in the session. One selected model implements and verifies; do not create subagents,
+read in the session. Before implementation, use copied routing.yaml to briefly assess task fit,
+total time/tokens, uncertainty, failure impact, verifiability and rework risk; there is no fixed
+default model or mandatory Luna-first attempt. Honor the user's model choice. With no override,
+recommend Sol when selection evidence is insufficient or failure impact is high. File count and
+request length alone do not determine the model. Do not add classifier calls or scoring machinery.
+One selected model explores, designs, implements, reviews and verifies; do not create subagents,
 orchestrate Sol+Luna, or run agents in parallel. Model escalation is sequential and requires
-actual runtime support or manual model selection. The current chat model does not switch automatically.
+actual runtime support or manual model selection. Escalate only after cause analysis of a confirmed
+unresolved problem or related check failure beyond the current model; environment/tool errors or
+uncertainty alone do not trigger escalation. Pass only goal, relevant files, attempts, check results
+and remaining problems. Without switching support, retain the current model and disclose the actual
+model, recommendation and reason; do not claim a switch. Decisions API is not required or invoked;
+an optional integration needs demonstrated benefit and user authorization, accounting for cost and
+latency. Its estimates are not measured coding success rates.

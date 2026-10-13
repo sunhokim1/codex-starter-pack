@@ -1,15 +1,23 @@
 # 단독 모델 선택 지침. 실제 모델 ID는 models.yaml이 유일한 기준이다.
 routing:
-  default_role: worker
+  # 고정 기본 모델 없음. 구현 전에 작업 적합도와 예상 전체 효율로 선택한다.
   selection:
-    clear_implementation_cost_priority: worker
-    analysis_debugging_or_design: main
-    speed_or_failure_risk_priority: main
-  # 현재 모델로 해결하기 어려운 미해결 문제/검증 실패에서만 순차 승격한다.
+    before_implementation: true
+    user_model_request_takes_priority: true
+    consider: [difficulty, uncertainty, failure_impact, verifiability, rework_risk, total_time_and_tokens]
+    worker: clear_scope_existing_pattern_local_or_independent_low_impact_clear_checks_low_rework
+    main: interpretation_design_complex_debugging_cross_subsystem_architecture_or_data_change_high_rework
+    insufficient_selection_evidence_or_high_failure_impact: main
+    ignore_as_sole_criteria: [file_count, request_length]
+    assessment: brief_no_scores_or_classifier_calls
+  # 처음부터 적합한 모델을 선택한다. Luna를 반드시 먼저 시도하지 않는다.
   escalation:
     worker: main
     main: escalation
     escalation: null
+  escalation_requires: confirmed_unresolved_problem_or_related_check_failure_beyond_current_model_after_cause_analysis
+  escalation_excludes: [environment_error_alone, transient_tool_failure_alone, uncertainty_alone]
+  handoff_context: [goal, relevant_files, attempted_methods, verification_results, remaining_problem]
 
 execution:
   backend: current_model
@@ -19,7 +27,7 @@ execution:
   verification_owner: current_model
   model_source: .ai/models.yaml
   # YAML은 채팅 모델을 바꾸지 않는다. 하위 에이전트로 전환을 대신하지 않는다.
-  unsupported_model_switch: disclose_and_request_manual_selection
+  unsupported_model_switch: retain_current_model_disclose_recommendation_and_reason_request_manual_selection
   report_actual_model: true
   user_model_request_takes_priority: true
 
