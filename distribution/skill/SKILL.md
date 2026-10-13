@@ -13,7 +13,17 @@ User requirements and existing project instructions take precedence over templat
 Use the requested target directory or current project. Read applicable AGENTS.md instructions.
 Run `python <skill-dir>/scripts/scaffold.py --target <project-dir> --dry-run`, then run
 without `--dry-run` if the preflight passes. The script never overwrites existing files.
-If Python is unavailable, preflight destination conflicts and copy with native tools.
+Use Python 3.11+; on Windows, if unavailable run the bundled `scripts/bootstrap.ps1`
+with `-Target <project>` to install Python and apply the starter. Honor tool permissions.
+The non-dry-run scaffold also installs shared local SEV, dependencies, pinned public
+model weights, the single-model-runner skill and Windows sign-in startup. Installation
+requires internet once, disk space and local socket access; no classification API is used.
+If an existing project's core files conflict, preserve/merge them first, then run
+`python <skill-dir>/scripts/install_sev.py --target <project>` to finish the same setup.
+Do not stop after copying core files or silently skip failed SEV installation.
+After installation `.ai/sev.json` contains machine-specific paths and managed AGENTS
+guidance enables development requests through SEV. Verify service status using those
+paths and report installation separately from coding verification. No framework is installed.
 
 Read the resulting AGENTS.md and PROJECT.md. Initialize confirmed project facts as described below;
 leave empty projects uninitialized. Record supplied requirements in PROJECT.md. Check template
@@ -52,15 +62,20 @@ with the user; unrelated files need no repository-wide scan.
 The core is AGENTS.md, PROJECT.md, models.yaml, routing.yaml and verification.yaml.
 Models are role-mapped; configuration does not switch the current chat model.
 Generic policy, role, preset and empty architecture documents are not bundled.
-History, integrations, custom routing, training, memory, capsules and evidence logs are
-optional/inactive. Do not enable them or introduce a separate API orchestrator for a scaffold request.
+History, integrations, training, memory, capsules and evidence logs are
+optional/inactive. Local SEV is the authorized single-model selection path; do not
+introduce an API orchestrator, subagents or parallel execution for a scaffold request.
 Do not install frameworks or connect APIs for a scaffold-only request.
 Project copies are independent snapshots; skill changes do not update existing projects.
 
 ## Development after adoption
 
 For development, follow the copied `AGENTS.md` and reuse unchanged instructions and settings already
-read in the session. Before implementation, use copied routing.yaml to briefly assess task fit,
+read in the session. When `.ai/sev.json` is configured, invoke single-model-runner for
+development requests using its configured paths; do not classify again in this chat.
+The rest of this paragraph is the manual fallback for projects without SEV; an installation
+or runtime error must be reported rather than silently activating it. Before implementation,
+use copied routing.yaml to briefly assess task fit,
 total time/tokens, uncertainty, failure impact, verifiability and rework risk; there is no fixed
 default model or mandatory Luna-first attempt. Honor the user's model choice.
 Assess only the currently available user request and project information. Do not perform broad

@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+.venv/
+experiments/local-model-selector/model/
+.sev-runtime/
+.ai/sev.json

@@ -30,7 +30,7 @@
 완료하려면 요구사항을 충족하고 관련 실제 검증이 통과해야 한다. 설정된 명령 중 사용 가능한 것만 실행하며,
 명령이 없으면 수동 점검 결과와 검증 한계를 밝힌다.
 
-고정 기본 모델 없이 구현 전에 작업 적합도와 예상 전체 시간·토큰·재작업 위험·검증 신뢰도를 짧게 판단한다.
+SEV가 설정되지 않은 프로젝트는 고정 기본 모델 없이 구현 전에 작업 적합도와 예상 전체 시간·토큰·재작업 위험·검증 신뢰도를 짧게 판단한다.
 모델 선택에 필요한 판단은 현재 확인 가능한 사용자 요청과 프로젝트 정보만으로 수행한다.
 모델 선택만을 목적으로 광범위한 코드 탐색, 별도 에이전트 실행 또는 추가 분류 단계를 수행하지 않는다.
 요구사항·범위가 명확하고 기존 코드 패턴으로 해결되며, 변경이 국소적/독립적이고 실패 영향이 작고
@@ -50,3 +50,17 @@ Sol+Luna 조율, 하위 에이전트 배정, 자동 병렬 실행은 사용하�
 
 관련된 읽기와 수정을 묶어 처리하되 도구 호출 횟수 제한을 두지 않는다. 실제 실행된 검증 증거를 확인하며,
 코드 변경·실패·중요한 우려 없이 동일한 최종 상태의 검사를 반복하지 않는다. 완료 시 변경 내용·실제 검증·미해결 문제를 간결히 보고한다.
+
+<!-- starter-sev:start -->
+## Local SEV execution
+
+When `.ai/sev.json` exists, use the installed `single-model-runner` for development
+requests without requiring the user to name the skill. Read the paths from that JSON.
+Pass the request and already known project facts unchanged. Use --model worker|main
+for a user override; otherwise use persistent SEV. General questions stay in this chat.
+The selected model owns implementation and verification; do not repeat its work.
+Do not invoke the runner again inside a task it already selected. No subagents or
+parallel agents. This authorized local workflow takes precedence over manual selection
+guidance. On service failure stop and report; never substitute a paid classifier.
+The app chat model does not change. This is instruction-based invocation, not interception.
+<!-- starter-sev:end -->

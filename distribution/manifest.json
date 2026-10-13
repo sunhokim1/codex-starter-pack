@@ -11,6 +11,19 @@
   ],
   "skill_files": {
     "SKILL.md": "distribution/skill/SKILL.md",
-    "scripts/scaffold.py": "distribution/skill/scripts/scaffold.py"
+    "scripts/scaffold.py": "distribution/skill/scripts/scaffold.py",
+    "scripts/install_sev.py": "distribution/skill/scripts/install_sev.py",
+    "scripts/bootstrap.ps1": "distribution/skill/scripts/bootstrap.ps1",
+    "assets/runner/run.py": "experiments/single-model-runner/scripts/run.py",
+    "assets/runner/SKILL.md": "distribution/skill/runner-SKILL.md",
+    "assets/sev/selector.py": "experiments/local-model-selector/selector.py",
+    "assets/sev/sev_candidate.py": "experiments/local-model-selector/sev_candidate.py",
+    "assets/sev/sev_long_candidate.py": "experiments/local-model-selector/sev_long_candidate.py",
+    "assets/sev/sev_keyword_selector.py": "experiments/local-model-selector/sev_keyword_selector.py",
+    "assets/sev/sev_service.py": "experiments/local-model-selector/sev_service.py",
+    "assets/sev/sev-candidate.npz": "experiments/local-model-selector/sev-candidate.npz",
+    "assets/sev/sev-long-candidate.npz": "experiments/local-model-selector/sev-long-candidate.npz",
+    "assets/sev/setup_model.py": "experiments/local-model-selector/setup_model.py",
+    "assets/sev/requirements.txt": "experiments/local-model-selector/requirements.txt"
   }
 }

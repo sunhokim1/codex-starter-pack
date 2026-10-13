@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import subprocess
 
 
 def main():
@@ -61,7 +62,8 @@ def main():
         with dest.open('xb') as output:
             output.write(original.read_bytes())
     print(f'OK: created {len(files)} files in {target}')
-    return 0
+    return subprocess.call([sys.executable, str(Path(__file__).with_name('install_sev.py')),
+                            '--target',str(target)])
 
 
 if __name__ == '__main__':
