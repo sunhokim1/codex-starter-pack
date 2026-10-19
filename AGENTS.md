@@ -20,6 +20,10 @@
 주요 entry point/tests/docs/schema/nested 지침의 경로가 바뀌면 기존 링크를 바로잡는다.
 작은 helper/component 추가에는 map 또는 문서 갱신을 요구하지 않는다.
 
+## README 언어
+
+앞으로 저장소의 모든 README 파일은 제목, 본문, 설명을 자연스러운 한국어로 작성하고 수정한다. 명령어, 경로, 모델 이름, 코드, 설정 키, 공식 제품명은 정확한 원문 표기를 유지한다.
+
 ## 작업과 설정
 
 - `.ai/models.yaml`은 worker/main/escalation의 실제 모델 매핑 기준이다. 현재 채팅 모델은 자동 전환되지 않는다.
