@@ -60,7 +60,7 @@
         $client = New-Object Net.WebClient
         try {
             # Pin to the immutable verified ZIP commit to avoid branch-cache skew.
-            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/9e0eb787f375d58b20800982335a17d70bb9f0b6/universal-ai-starter.zip'
+            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/1f1a8e97e097e457cc1369c26cc652dfb57e15c0/universal-ai-starter.zip'
             $bytes = $client.DownloadData($url)
             if ($bytes.Length -eq 0 -or $bytes.Length -gt 32MB) { throw 'Unexpected ZIP download size.' }
             return ,$bytes
