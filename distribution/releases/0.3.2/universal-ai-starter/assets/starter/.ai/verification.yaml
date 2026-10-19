@@ -1,0 +1,8 @@
+# 새 프로젝트 초기값. 실제 정의된 명령을 확인한 뒤 채운다.
+# 기존 프로젝트의 설정은 보존한다. null은 미설정이며 검증 통과가 아니다.
+commands:
+  test: null
+  lint: null
+  typecheck: null
+  build: null
+  acceptance: null

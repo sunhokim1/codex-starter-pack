@@ -26,12 +26,12 @@ class ScaffoldAdoptTests(unittest.TestCase):
             spec=importlib.util.spec_from_file_location('scaffold_adopt',SCRIPT)
             module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
             module.__file__=str(bundle/'scripts/scaffold.py')
-            with patch.object(module.sys,'argv',['scaffold','--target',str(target),'--adopt']), patch.object(module.subprocess,'call',return_value=0) as install, patch.object(module,'verify_bundle',return_value='0.3.1'):
+            with patch.object(module.sys,'argv',['scaffold','--target',str(target),'--adopt']), patch.object(module.subprocess,'call',return_value=0) as install, patch.object(module,'verify_bundle',return_value='0.3.2'):
                 self.assertEqual(module.main(),0)
                 self.assertEqual(install.call_count,1)
             self.assertEqual((target/'README.md').read_text(),'user facts')
             self.assertEqual((target/'AGENTS.md').read_text(),'map')
-            with patch.object(module.sys,'argv',['scaffold','--target',str(target),'--adopt','--dry-run']), patch.object(module.subprocess,'call') as install, patch.object(module,'verify_bundle',return_value='0.3.1'):
+            with patch.object(module.sys,'argv',['scaffold','--target',str(target),'--adopt','--dry-run']), patch.object(module.subprocess,'call') as install, patch.object(module,'verify_bundle',return_value='0.3.2'):
                 self.assertEqual(module.main(),0)
                 install.assert_not_called()
 
