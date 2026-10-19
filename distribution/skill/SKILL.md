@@ -5,7 +5,7 @@ description: Apply the user's framework-neutral Universal AI Starter to a new pr
 
 # Universal AI Starter
 
-Strong models, thin harness. Use the bundled seven core files in `assets/starter/`.
+Strong models, thin harness. Use the bundled core template files in `assets/starter/`.
 User requirements and existing project instructions take precedence over template defaults.
 
 ## Apply
@@ -15,12 +15,17 @@ Run `python <skill-dir>/scripts/scaffold.py --target <project-dir> --dry-run`, t
 without `--dry-run` if the preflight passes. The script never overwrites existing files.
 Use Python 3.11+; on Windows, if unavailable run the bundled `scripts/bootstrap.ps1`
 with `-Target <project>` to install Python and apply the starter. Honor tool permissions.
-The non-dry-run scaffold also installs shared local SEV, dependencies, pinned public
+Unless --files-only is explicitly requested, the non-dry-run scaffold also installs local SEV, dependencies, pinned public
 model weights, the single-model-runner skill and Windows sign-in startup. Installation
 requires internet once, disk space and local socket access; no classification API is used.
 If an existing project's core files conflict, preserve/merge them first, then run
 `python <skill-dir>/scripts/install_sev.py --target <project>` to finish the same setup.
 Do not stop after copying core files or silently skip failed SEV installation.
+`--files-only` explicitly authorizes a file-only application. `--no-autostart` skips
+Windows sign-in startup. Runtime deployments are versioned and existing deployments
+and user skill files are preserved; reconnect a project explicitly to adopt a new runner.
+Installation failure restores project settings and reports any rollback/stop failure.
+Do not delete previous or failed deployments automatically.
 After installation `.ai/sev.json` contains machine-specific paths and managed AGENTS
 guidance enables development requests through SEV. Verify service status using those
 paths and report installation separately from coding verification. No framework is installed.
@@ -67,6 +72,9 @@ optional/inactive. Local SEV is the authorized single-model selection path; do n
 introduce an API orchestrator, subagents or parallel execution for a scaffold request.
 Do not install frameworks or connect APIs for a scaffold-only request.
 Project copies are independent snapshots; skill changes do not update existing projects.
+Never paste credentials into task files. Known credential formats are filtered from
+execution inputs and saved diagnostics; use environment/secret-store references instead.
+Reports belong in `.ai/reports/`; console status omits raw requests and evidence.
 
 ## Development after adoption
 

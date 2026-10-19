@@ -59,7 +59,7 @@
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         $client = New-Object Net.WebClient
         try {
-            # Pin this v0.3.0 installer to its verified release, avoiding branch-cache skew.
+            # Pin this v0.3.1 installer to its verified release, avoiding branch-cache skew.
             $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/60541b99d8ce6c062567e1a69c4ef24169154be6/universal-ai-starter.zip'
             $bytes = $client.DownloadData($url)
             if ($bytes.Length -eq 0 -or $bytes.Length -gt 32MB) { throw 'Unexpected ZIP download size.' }
@@ -109,7 +109,7 @@
             if (-not $releaseEntry -or $releaseEntry.Length -gt 1MB) { throw 'Missing/invalid release metadata.' }
             $reader = New-Object IO.StreamReader($releaseEntry.Open())
             try { $release = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
-            if ($release.version -ne '0.3.0' -or -not $release.sha256) { throw 'Expected starter release 0.3.0.' }
+            if ($release.version -ne '0.3.1' -or -not $release.sha256) { throw 'Expected starter release 0.3.1.' }
             $hashes = @($release.sha256.PSObject.Properties)
             if ($hashes.Count -ne ($entries.Count - 1)) { throw 'Release manifest does not cover every ZIP file.' }
             $required = @('SKILL.md', 'scripts/bootstrap.ps1', 'scripts/scaffold.py', 'scripts/install_sev.py',
@@ -182,13 +182,23 @@
             if (Test-Path -LiteralPath $backup) { Move-Item -LiteralPath $backup -Destination $installed }
             throw
         }
-        if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Recurse -Force }
+        # Preserve the old personal skill backup, including user customizations.
+        if (Test-Path -LiteralPath $backup) { Write-Host "Previous skill preserved at $backup" }
         # Recheck target immediately before bundled bootstrap writes anything.
         $Target = Select-StarterTarget $Target
         $bootstrapDirectory = Join-Path $installed 'scripts'
         $bootstrapText = [IO.File]::ReadAllText((Join-Path $bootstrapDirectory 'bootstrap.ps1'), [Text.Encoding]::UTF8)
         & ([scriptblock]::Create($bootstrapText)) -Target $Target -ScriptDirectory $bootstrapDirectory
-        Write-Host "Starter 0.3.0 and SEV installed for $Target. Restart Codex to refresh skills."
+        Write-Host "Starter 0.3.1 and SEV installed for $Target. Restart Codex to refresh skills."
+    } catch {
+        if (Test-Path -LiteralPath $backup) {
+            if (Test-Path -LiteralPath $installed) {
+                $failed = Join-Path $skills ('universal-ai-starter.failed-' + [Guid]::NewGuid().ToString('N'))
+                Move-Item -LiteralPath $installed -Destination $failed
+            }
+            Move-Item -LiteralPath $backup -Destination $installed
+        }
+        throw
     } finally {
         if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
     }

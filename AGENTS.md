@@ -64,3 +64,14 @@ parallel agents. This authorized local workflow takes precedence over manual sel
 guidance. On service failure stop and report; never substitute a paid classifier.
 The app chat model does not change. This is instruction-based invocation, not interception.
 <!-- starter-sev:end -->
+
+
+## Maintained 0.3.1 source
+
+The source of truth is distribution/releases/0.3.1/universal-ai-starter/.
+Read its AGENTS.md for edits inside that bundle. Root/experiments compatibility entry points
+forward into that source; do not create a second implementation. distribution/manifest.json
+maps the complete bundle for scripts/package_starter.py. Preserve existing project facts.
+Run root tests and the 40 bundled regressions; distinguish mocks from actual installation.
+Do not install, run paid models or modify startup entries merely to validate packaging.
+See CONTINUOUS_IMPROVEMENT.md for remaining work.

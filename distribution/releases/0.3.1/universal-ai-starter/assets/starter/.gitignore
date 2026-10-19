@@ -1,0 +1,9 @@
+# starter-private:start
+.ai/sev.json
+.ai/project-workflow/
+.ai/reports/
+.ai/installation.lock
+.env
+.env.*
+!.env.example
+# starter-private:end

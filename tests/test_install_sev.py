@@ -27,7 +27,7 @@ class InstallSevTests(unittest.TestCase):
     def test_bundle_tamper_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
-            (root/'release.json').write_text(json.dumps({'version':'0.3.0','sha256':{'universal-ai-starter/a.txt':'0'*64}}))
+            (root/'release.json').write_text(json.dumps({'version':'0.3.1','sha256':{'universal-ai-starter/a.txt':'0'*64}}))
             (root/'a.txt').write_text('tampered')
             with self.assertRaises(ValueError):installer.verify_bundle(root)
 
@@ -38,7 +38,7 @@ class InstallSevTests(unittest.TestCase):
             digest=hashlib.sha256(b'content').hexdigest()
             for name in ('wrong-root/a.txt', 'universal-ai-starter/../a.txt',
                          'universal-ai-starter/C:/a.txt', 'universal-ai-starter/a\\b'):
-                (root/'release.json').write_text(json.dumps({'version':'0.3.0','sha256':{name:digest}}))
+                (root/'release.json').write_text(json.dumps({'version':'0.3.1','sha256':{name:digest}}))
                 with self.subTest(name=name), self.assertRaises(ValueError):installer.verify_bundle(root)
 
     def test_missing_core_never_installs_or_runs(self):

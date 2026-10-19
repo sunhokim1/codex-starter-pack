@@ -41,18 +41,20 @@ class RunnerTests(unittest.TestCase):
             (root / 'models.yaml').write_text(
                 'models:\n  worker:\n    model_id: test-luna\n  main:\n    model_id: test-sol\n',
                 encoding='utf-8')
+            (root / '.ai').mkdir()
+            (root / '.ai/verification.yaml').write_text('commands:\n  test: fixture-check\n')
             args = SimpleNamespace(codex='codex', project=temp, task_file=root/'task.txt',
                                    context_file=None, models=root/'models.yaml', model=override,
                                    selection_timeout=90, execution_timeout=600, write=False,
                                    selector='sev' if sev else ('local' if local else 'codex'),
                                    sev_state='state.json',local_python='python',local_script='selector.py')
             results = [{'response': json.dumps(choice), 'usage': {}},
-                       {'response': 'done', 'usage': {}}]
+                       {'response': json.dumps({'outcome':'completed','summary':'fixture done','verification':[{'name':'test','command':'fixture-check','executed':True,'exit_code':0,'evidence':'fixture passed'}],'escalation':None}), 'usage': {}}]
             if override:
                 results = results[1:]
             elif local or sev:
                 results=results[1:]
-            with patch.object(runner.shutil, 'which', return_value='codex'), \
+            with patch('runtime_safety.private_permissions'), patch.object(runner.shutil, 'which', return_value='codex'), \
                  patch.object(runner, 'invoke', side_effect=results) as invoke, \
                  patch.object(runner.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(choice),stderr='')):
                 report = runner.run(args)

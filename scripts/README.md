@@ -1,3 +1,13 @@
+## 0.3.1 유지보수 경로
+
+현재 배포 소스는 `distribution/releases/0.3.1/universal-ai-starter/`입니다.
+`distribution/manifest.json`은 이 소스의 모든 배포 파일을 매핑하며,
+`python scripts/package_starter.py --check`와 옵션 없는 빌드로 루트 ZIP을 재현합니다.
+`distribution/skill/scripts/`와 실험용 runner/service 진입점은 새 소스로 전달하는 호환 경로입니다.
+실제 설치 전에 새 bundle의 README와 REPAIR_NOTES를 확인하세요.
+
+아래 0.3.0 설명은 이전 구조의 참고 자료입니다.
+
 # Scripts
 
 ## 스타터 원본 관리 저장소에서 배포
