@@ -60,7 +60,7 @@
         $client = New-Object Net.WebClient
         try {
             # Pin this v0.3.1 installer to its verified release, avoiding branch-cache skew.
-            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/60541b99d8ce6c062567e1a69c4ef24169154be6/universal-ai-starter.zip'
+            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/b321641985257e8e911253220b401f9696a5e190/universal-ai-starter.zip'
             $bytes = $client.DownloadData($url)
             if ($bytes.Length -eq 0 -or $bytes.Length -gt 32MB) { throw 'Unexpected ZIP download size.' }
             return ,$bytes
