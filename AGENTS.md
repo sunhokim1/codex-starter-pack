@@ -66,9 +66,9 @@ The app chat model does not change. This is instruction-based invocation, not in
 <!-- starter-sev:end -->
 
 
-## Maintained 0.3.2 source
+## Maintained 0.3.3 source
 
-The source of truth is distribution/releases/0.3.2/universal-ai-starter/.
+The source of truth is distribution/releases/0.3.3/universal-ai-starter/.
 Read its AGENTS.md for edits inside that bundle. Root/experiments compatibility entry points
 forward into that source; do not create a second implementation. distribution/manifest.json
 maps the complete bundle for scripts/package_starter.py. Preserve existing project facts.
