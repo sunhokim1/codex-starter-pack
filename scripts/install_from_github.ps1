@@ -59,8 +59,8 @@
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         $client = New-Object Net.WebClient
         try {
-            # Pin this v0.3.1 installer to its verified release, avoiding branch-cache skew.
-            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/b321641985257e8e911253220b401f9696a5e190/universal-ai-starter.zip'
+            # Pin this v0.3.2 installer to its verified release, avoiding branch-cache skew.
+            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/60541b99d8ce6c062567e1a69c4ef24169154be6/universal-ai-starter.zip'
             $bytes = $client.DownloadData($url)
             if ($bytes.Length -eq 0 -or $bytes.Length -gt 32MB) { throw 'Unexpected ZIP download size.' }
             return ,$bytes
@@ -109,7 +109,7 @@
             if (-not $releaseEntry -or $releaseEntry.Length -gt 1MB) { throw 'Missing/invalid release metadata.' }
             $reader = New-Object IO.StreamReader($releaseEntry.Open())
             try { $release = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
-            if ($release.version -ne '0.3.1' -or -not $release.sha256) { throw 'Expected starter release 0.3.1.' }
+            if ($release.version -ne '0.3.2' -or -not $release.sha256) { throw 'Expected starter release 0.3.2.' }
             $hashes = @($release.sha256.PSObject.Properties)
             if ($hashes.Count -ne ($entries.Count - 1)) { throw 'Release manifest does not cover every ZIP file.' }
             $required = @('SKILL.md', 'scripts/bootstrap.ps1', 'scripts/scaffold.py', 'scripts/install_sev.py',
@@ -189,7 +189,7 @@
         $bootstrapDirectory = Join-Path $installed 'scripts'
         $bootstrapText = [IO.File]::ReadAllText((Join-Path $bootstrapDirectory 'bootstrap.ps1'), [Text.Encoding]::UTF8)
         & ([scriptblock]::Create($bootstrapText)) -Target $Target -ScriptDirectory $bootstrapDirectory
-        Write-Host "Starter 0.3.1 and SEV installed for $Target. Restart Codex to refresh skills."
+        Write-Host "Starter 0.3.2 and SEV installed for $Target. Restart Codex to refresh skills."
     } catch {
         if (Test-Path -LiteralPath $backup) {
             if (Test-Path -LiteralPath $installed) {

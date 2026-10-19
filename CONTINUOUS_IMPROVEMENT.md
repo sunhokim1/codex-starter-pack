@@ -33,3 +33,10 @@ AGENTS.md와 CONTINUOUS_IMPROVEMENT.md를 읽고 남은 가장 높은 우선순�
 현재 허용된 범위 밖의 실제 설치·유료 호출·외부 게시·배포는 실행하지 마.
 검증 생략이나 보호 조건 약화로 완료 처리하지 마.
 ```
+
+## 0.3.2 workflow contract
+
+Use schema 3 typed plans and bounded dependency results. Keep per-task SEV selection.
+Resume must detect workspace changes and require explicit successful reverification.
+Add regression coverage before changing these contracts; compare measured character
+counts separately from real token/cost/quality evidence. Never replay completed tasks.
