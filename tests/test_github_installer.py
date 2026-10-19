@@ -42,7 +42,7 @@ $ast.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDef
                  for dest, src in manifest['skill_files'].items()}
         files.update({f'universal-ai-starter/assets/starter/{name}': (ROOT/name).read_bytes()
                       for name in manifest['template_files']})
-        release = {'version': '0.3.0', 'sha256': {name: hashlib.sha256(data).hexdigest()
+        release = {'version': '0.3.1', 'sha256': {name: hashlib.sha256(data).hexdigest()
                                                 for name, data in files.items()}}
         if change:
             change(files, release)

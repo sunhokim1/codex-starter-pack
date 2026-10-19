@@ -9,3 +9,7 @@ Thumbs.db
 experiments/local-model-selector/model/
 .sev-runtime/
 .ai/sev.json
+
+.ai/project-workflow/
+.ai/reports/
+.ai/installation.lock

@@ -1,109 +1,18 @@
-# Universal AI Development Starter
+# Universal AI Development Starter 0.3.1
 
-Strong models, thin harness.
+0.3.1은 템플릿 오염·검증 미실행 완료·SEV 입력 오류와 설치/기록 보호를 수정했습니다.
+수정 소스는 `distribution/releases/0.3.1/universal-ai-starter/`, 배포물은 루트 `universal-ai-starter.zip`입니다.
+기존 프로젝트와 개인 설정은 자동으로 변경하지 않습니다. [수정·호환성·검증 한계](docs/repair-0.3.1.md)를 확인하세요.
 
-v0.3.0부터 스타터 스킬 적용 시 공용 로컬 SEV와 single-model-runner까지 설치한다.
-컴퓨터당 모델 한 개를 공유하며 최초 설치 때 공개 모델 약 118MB와 Python 패키지를
-다운로드한다. Python 3.11+가 필요하고, Windows에서는 bootstrap.ps1이 없을 때 설치한다.
-Codex CLI가 설치되고 원하는 모델을 사용할 수 있는 계정으로 로그인되어 있어야 코딩이
-가능하다. 설치기가 계정 인증이나 API 키를 변경하지는 않는다.
+- 원본 소스·회귀 검사: [0.3.1 폴더](distribution/releases/0.3.1/universal-ai-starter/README.md)
+- 저장소에서 재빌드: `python scripts/package_starter.py` (manifest가 범용 템플릿만 사용)
+- 새 bundle 검증: `python distribution/releases/0.3.1/universal-ai-starter/scripts/package_starter.py --check`
+- 회귀 검사: `python -m unittest discover -s distribution/releases/0.3.1/universal-ai-starter/tests -p "test_*.py" -v`
+- 기존 호환 경로의 runner/service/install/scaffold는 최신 소스로 전달됩니다.
+- [지속 개선 지침](CONTINUOUS_IMPROVEMENT.md)
 
-설치가 성공하면 `.ai/sev.json`에 이 컴퓨터의 경로를 기록하고 AGENTS.md에 개발 요청을
-실행기로 전달하는 지침을 추가한다. SEV는 한 번 로딩해 재사용하고 Windows 로그인 시
-자동 시작한다. 일반 질문은 앱에서 답하며 앱 채팅 모델은 바뀌지 않는다. 자동 호출은
-지침 기반이다. SEV 분류의 OpenAI 토큰은 0이지만 앱 호출과 실제 코딩은 토큰을 사용한다.
-모델 파일은 고정 revision/hash로 확인하고, SEV 오류 시 유료 분류로 대체하지 않는다.
-Windows 외 플랫폼에서는 로그인 자동 시작을 등록하지 않는다.
+ZIP을 신뢰한 출처에서 내려받아 확인한 뒤 적용하세요. 저장된 `scripts/install_from_github.ps1`은
+고정 commit의 0.3.1 ZIP을 검증하며 이전 개인 스킬 백업을 보존합니다. 실제 설치·Codex 실행·모델 추론은
+오프라인 회귀 검사와 별도로 검증해야 합니다. 비밀값은 요청문 대신 환경/비밀 저장소 참조를 사용하세요.
 
-웹·SaaS·게임·모바일·데스크톱·백엔드·CLI용 운영 기반이다. 기술 스택과 application은
-아직 초기화되지 않았다. 모델은 구현을 판단하고, 지침은 탐색·역할 선택·검증을 정리한다.
-
-## 핵심
-
-| 파일 | 책임 |
-| --- | --- |
-| `AGENTS.md` | subsystem navigation, nested 지침, 작업·완료 기준 |
-| `PROJECT.md` | 프로젝트 기본 정보와 요구사항 |
-| `.ai/models.yaml` | 실제 모델 매핑의 source of truth |
-| `.ai/routing.yaml` | 단독 모델 선택, 순차 승격, 기본 reasoning |
-| `.ai/verification.yaml` | test/lint/typecheck/build/필요 시 acceptance 명령 |
-
-모델 매핑은 worker = GPT-6.0 Luna, main = GPT-6.1 Sol, escalation = GPT-6.0 Astra다.
-이 표기는 참고용이며 실제 model_id는 models.yaml을 따른다. 현재 채팅 모델은 자동 전환되지 않는다.
-
-## 작업 흐름
-
-SEV가 설치된 프로젝트는 로컬 SEV → 선택된 단독 Codex 실행 흐름을 우선한다.
-아래 모델 판단 지침은 SEV를 설치하지 않은 프로젝트의 수동 선택 기준이다.
-
-1. 고정 기본 모델 없이 구현 전에 난이도·불확실성·실패 영향·검증 가능성·재작업 위험과 전체 시간·토큰을 짧게 판단해 Luna 또는 Sol을 선택한다. 사용자 지정 모델이 우선한다.
-2. 선택된 모델 하나가 필요한 탐색·설계·구현·검토를 직접 수행한다. Sol+Luna 조율, 하위 에이전트 배정과 자동 병렬 실행은 사용하지 않는다.
-3. 같은 모델이 관련 검증을 수행한다. 변경·실패·중요한 우려 없이 동일한 최종 상태를 반복 검증하지 않는다.
-4. 확인된 미해결 문제나 관련 검증 실패를 원인 분석한 뒤 현재 모델로 해결하기 어려울 때만 Luna → Sol → Astra로 한 단계 승격한다. 환경 오류·일시적 도구 실패·확신 부족만으로 승격하지 않는다. 목표·관련 파일·시도·검증 결과·남은 문제만 넘긴다.
-5. 실제 모델·변경·검증 결과·남은 문제를 보고한다. YAML은 채팅 모델을 바꾸지 않으며 전환 미지원 환경에서는 현재 모델을 유지하고 추천 모델·이유와 수동 선택 방법을 안내한다.
-
-Luna는 명확한 범위, 기존 코드 패턴, 국소적/독립적 변경, 낮고 복구하기 쉬운 실패 영향,
-명확한 검증과 낮은 재작업 위험에서 선택한다. Sol은 해석·설계·복잡한 디버깅, subsystem 의존성,
-architecture/데이터 구조 변경 또는 높은 실패·재작업 위험에서 선택한다. 근거가 부족하거나 실패 영향이 크면 Sol을 추천한다.
-파일 수나 요청 길이만으로 판단하지 않는다. Luna/Sol은 독립 실행 모델이며 반드시 Luna부터 시도하지 않는다.
-모델 선택은 현재 확인 가능한 사용자 요청과 프로젝트 정보만으로 판단한다.
-선택만을 위한 광범위한 코드 탐색·별도 에이전트 실행·추가 분류 단계는 수행하지 않는다.
-
-관련된 읽기와 수정은 적절히 묶어 처리하며 도구 호출 횟수 제한은 두지 않는다.
-
-## 시작과 재사용
-
-Windows에서는 PowerShell에 아래 한 줄을 붙여넣고 프로젝트 폴더를 선택한다.
-ZIP 다운로드·스킬 등록·Python/SEV 설치·실행기 연결까지 자동으로 처리한다.
-
-```powershell
-irm https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/main/scripts/install_from_github.ps1 | iex
-```
-
-폴더 선택창에서 프로젝트를 선택한다(MTA 환경에서는 경로 입력, 빈 입력은 취소).
-경로를 알고 있으면 `-Target 'C:\projects\my-project'`를 붙인다. 취소하면 프로젝트 파일을 쓰지 않는다.
-공개 저장소에서 내려받으므로 GitHub 로그인이나 GitHub CLI는 필요 없다.
-0.3.0 ZIP의 경로·스킬 이름·전체 SHA256을 검사한 뒤 개인 스킬과 Python/SEV를 설치한다.
-기존 프로젝트는 핵심 파일을 덮어쓰지 않고 없는 파일만 추가한 뒤 SEV를 연결한다.
-링크·디렉터리 등 파일 경로 충돌은 중단하며 기존 데이터는 보존한다.
-
-프로젝트를 선택하면 PROJECT.md에 목표·스택·플랫폼·제약을 기록한다.
-선택한 스택의 검증 명령과 subsystem map을 채운다. 스택을 선택하지 않은 상태에서 framework를 설치하지 않는다.
-
-스킬 적용 시 AI가 실제 프로젝트 폴더와 설정 파일을 확인해 주요 코드·테스트 위치를 AGENTS.md map에,
-확인된 기술 스택·실행 환경을 PROJECT.md에, 실제 정의된 검증 명령을 verification.yaml에 채운다.
-기존 프로젝트 정보와 설정된 명령은 보존한다. 빈 프로젝트나 확인되지 않은 항목은 미설정으로 남긴다.
-명령 등록은 검증 실행·통과를 뜻하지 않으며, 초기 정보 수집만으로 의존성 설치나 빌드·테스트를 실행하지 않는다.
-
-개인 Codex 스킬을 등록한 컴퓨터에서는 새 프로젝트 폴더에서 다음처럼 호출한다.
-
-```text
-$universal-ai-starter 현재 디렉터리에 범용 AI 개발 스타터만 적용해줘.
-```
-
-배포용 `universal-ai-starter.zip`은 개인 스킬 경로 `~/.agents/skills/`에 압축을 풀어
-`universal-ai-starter/SKILL.md`가 위치하도록 한다. 목록에 나타나지 않으면 Codex를 재시작한다.
-스킬은 핵심 파일 7개, 충돌 시 덮어쓰지 않는 복사 스크립트와 SEV 자동 설치기를 포함한다.
-기존 프로젝트는 핵심 파일을 보존/병합한 뒤 install_sev.py --target으로 연결한다.
-재적용은 managed SEV 지침만 갱신하며 프로젝트 사실·모델 매핑·검증 명령은 보존한다.
-각 프로젝트는 독립된 복사본이며 이후 스킬 수정이 기존 프로젝트에 자동 전파되지는 않는다.
-
-스타터 원본 관리 저장소에서 수정한 뒤에는 `python scripts/package_starter.py`로 배포 ZIP을 만든다.
-버전·파일 해시·원본 일치를 검증한 ZIP만 교체한다. 설치된 스킬 갱신과 GitHub 업로드는 별도로 실행한다.
-관리 도구의 사용법은 원본 저장소에만 있는 `scripts/README.md`를 참고한다. 도구와 그 안내는 생성 프로젝트에 포함하지 않는다.
-
-## 선택 기능과 프로젝트 문서
-
-별도 역할·정책·유형별 체크리스트와 빈 구조 문서는 포함하지 않는다. 실제 subsystem이나 중요한
-architecture 결정에 설명이 필요할 때 프로젝트 문서를 만들고 AGENTS.md map에서 연결한다.
-
-`.ai/config.yaml`의 Hermes, Figma, custom router, classifier training, task history와
-자동 최적화, durable memory, task capsule, evidence log, design pipeline은 모두 비활성이다.
-비활성 기능의 이력 파일은 새 프로젝트에 포함하지 않는다. 기능을 켜도 integration이
-자동으로 구현되지는 않는다. 단독 실행과 순차 승격은 지침이며 현재 채팅 모델을 자동 전환하는
-프로그램이 아니다. 필요한 모델은 실제 실행 환경에서 선택한다.
-
-Decisions API는 기본 흐름에 도입하지 않는다. 향후 필요성과 사용자 승인이 확인되면 선택적 분류 수단으로
-검토할 수 있으나, 매 요청 호출·추가 비용/지연·독립 API 라우터를 기본 요구사항으로 만들지 않는다.
-분류 점수/확률은 실제 작업 성공률이 아니다. API 없이도 위 모델 선택 지침을 사용한다.
-지원 정보와 비용은 도입 시 [공식 Decisions 문서](https://developers.openai.com/api/docs/guides/decisions)를 다시 확인한다.
+이전 0.3.0 개발 기록은 Git 이력과 docs에 남아 있습니다. 모델 매핑과 기존 프로젝트 사실은 보존합니다.
