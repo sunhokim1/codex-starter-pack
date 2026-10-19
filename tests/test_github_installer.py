@@ -42,7 +42,7 @@ $ast.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDef
                  for dest, src in manifest['skill_files'].items()}
         files.update({f'universal-ai-starter/assets/starter/{name}': (ROOT/name).read_bytes()
                       for name in manifest['template_files']})
-        release = {'version': '0.3.2', 'sha256': {name: hashlib.sha256(data).hexdigest()
+        release = {'version': '0.3.3', 'sha256': {name: hashlib.sha256(data).hexdigest()
                                                 for name, data in files.items()}}
         if change:
             change(files, release)
@@ -59,6 +59,13 @@ Expand-VerifiedStarter ([IO.File]::ReadAllBytes((Join-Path $env:STARTER_WORK 'bu
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'universal-ai-starter/assets/runner/SKILL.template.md'))) { throw 'missing runner template' }
 if (Test-Path -LiteralPath (Join-Path $stage 'universal-ai-starter/assets/runner/SKILL.md')) { throw 'duplicate skill discovery' }
 """)
+
+    def test_staged_bootstrap_precedes_personal_skill_promotion(self):
+        text = (ROOT/'scripts/install_from_github.ps1').read_text(encoding='utf-8')
+        bootstrap = text.index('& ([scriptblock]::Create($bootstrapText))')
+        self.assertLess(bootstrap, text.index('Move-Item -LiteralPath $installed -Destination $backup'))
+        self.assertLess(bootstrap, text.index("Move-Item -LiteralPath (Join-Path $stage"))
+        self.assertIn("$bootstrapDirectory = Join-Path $stage 'universal-ai-starter/scripts'", text)
 
     def assert_bad_zip(self, change):
         self.write_zip(change)
@@ -82,6 +89,7 @@ if (Test-Path -LiteralPath $stage) { throw 'invalid ZIP wrote staging files' }
                 self.assert_bad_zip(lambda files, release: files.update({name: b'bad'}))
 
     def test_wrong_release_and_unhashed_extra_rejected(self):
+        self.assert_bad_zip(lambda files, release: release.update(version='0.3.2'))
         self.assert_bad_zip(lambda files, release: release.update(version='0.4.0'))
         self.assert_bad_zip(lambda files, release: files.update({'universal-ai-starter/extra': b'bad'}))
 

@@ -1,40 +1,34 @@
-## 0.3.2 유지보수 경로
+# 0.3.3 maintenance and distribution
 
-현재 배포 소스는 `distribution/releases/0.3.2/universal-ai-starter/`입니다.
-`distribution/manifest.json`은 이 소스의 모든 배포 파일을 매핑하며,
-`python scripts/package_starter.py --check`와 옵션 없는 빌드로 루트 ZIP을 재현합니다.
-`distribution/skill/scripts/`와 실험용 runner/service 진입점은 새 소스로 전달하는 호환 경로입니다.
-실제 설치 전에 새 bundle의 README와 REPAIR_NOTES를 확인하세요.
-
-아래 0.3.0 설명은 이전 구조의 참고 자료입니다.
-
-# Scripts
-
-## 스타터 원본 관리 저장소에서 배포
+The maintained source is `distribution/releases/0.3.3/universal-ai-starter/`.
+`distribution/manifest.json` explicitly maps every public source file, including
+the Windows preflight tests. Root packaging never enumerates project directories.
+The bundle package builder also uses an explicit source list; its integrity check
+rejects unlisted files. Keep both lists in agreement when adding public source.
 
 ```text
 python scripts/package_starter.py
+python scripts/package_starter.py --check
+python distribution/releases/0.3.3/universal-ai-starter/scripts/package_starter.py --check
 ```
 
-원본 파일 점검 → ZIP 생성 → 버전·SHA256·원본 내용 일치 확인 → 기존 ZIP 교체를 수행한다.
-기본 출력은 `universal-ai-starter.zip`이다. 임시 ZIP 검증에 실패하면 기존 ZIP을 보존한다.
-점검만 하려면 `--check`, 별도 출력 경로는 `--output <path>`를 사용한다.
+The first command reproducibly writes `universal-ai-starter.zip`, with release version
+from `.ai/config.yaml` and SHA256 for every source entry. To regenerate the canonical
+bundle's `release.json`, run its package script with `--output <outside-bundle.zip>`,
+then build the root reproducible ZIP. Outputs must remain outside canonical source.
+Old 0.3.1 and 0.3.2 source remains immutable.
 
-원본 기준은 repository의 핵심 파일 7개, `distribution/skill/`의 스킬 지침·복사 스크립트,
-`distribution/manifest.json`의 포함 목록이다. 버전은 `.ai/config.yaml`의 starter.version을 따른다.
-ZIP 내부 release.json이 버전과 파일 해시를 기록한다. 현재 배포 버전은 0.3.0으로 유지한다.
-개인 스킬 교체와 GitHub 업로드는 수행하지 않는다. 각각 필요할 때 명시적으로 실행한다.
+`distribution/skill/scripts/` and experiment runner/service entry points forward
+to the maintained source. Root `tests/` tests packaging and installer integration;
+the bundle's `tests/` covers runtime behavior. Local execution configuration and
+reports are excluded from the distribution mapping.
 
-도구 검증: `python -m unittest discover -s tests -v`.
-이 배포 도구와 그 테스트는 원본 관리 저장소 전용이며, 생성되는 프로젝트에는 포함하지 않는다.
-프로젝트 자체의 실제 검증 명령은 `.ai/verification.yaml`에 설정한다.
+`install_from_github.ps1` accepts `-Target <folder>` or prompts for a folder. It
+validates paths, release 0.3.3, the complete ZIP and hashes before running staged
+bootstrap. Personal skill promotion follows successful bootstrap. Existing projects
+and previous skills are preserved. Windows preflight failure prevents later setup;
+the installer never grants permissions automatically. The immutable URL must point
+to the commit containing the verified release ZIP before publication.
 
-## Windows 설치기
-
-`install_from_github.ps1`은 전체를 붙여넣을 수 있는 독립 명령 블록이다.
-`-Target <folder>` 또는 폴더 선택 후 공개 GitHub ZIP 다운로드(인증/CLI 불필요),
-경로·릴리스·해시 확인, 스킬 교체, 번들 bootstrap 순으로 실행한다. 다운로드 실패나
-검증 실패는 기존 스킬을 교체하지 않는다. 대상 프로젝트 핵심 파일 충돌은 보존하며,
-이미 AGENTS.md와 .ai/models.yaml이 있는 프로젝트는 install_sev.py로 바로 연결한다.
-runner 지침은 패키지에서 `SKILL.template.md`로 보관하고 설치 때만 `SKILL.md`로 만든다.
-실제 인증·winget·코딩 호출 없이 PowerShell Parser와 모의 부트스트랩/ZIP 테스트를 실행한다.
+Installer tests parse/load functions and use offline ZIPs and mocked bootstrap.
+They do not install Python, change ACLs, authenticate, run models or edit startup.

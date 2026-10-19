@@ -3,7 +3,7 @@
 # true로 바꿔도 미구현 기능이 설치되거나 실행되지는 않는다.
 starter:
   name: universal-ai-dev-starter
-  version: "0.3.2"
+  version: "0.3.3"
 
 features:
   hermes: false

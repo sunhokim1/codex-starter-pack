@@ -11,6 +11,34 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "package_starter.py"
 
 
 class PackageStarterTests(unittest.TestCase):
+    def test_current_release_source_set_hashes_and_reproducible_zip_agree(self):
+        root = SCRIPT.parents[1]
+        mapping = json.loads((root / 'distribution/manifest.json').read_text())
+        self.assertEqual(mapping['template_files'], [])
+        canonical = root / 'distribution/releases/0.3.3/universal-ai-starter'
+        release = json.loads((canonical / 'release.json').read_text())
+        self.assertEqual(release['version'], '0.3.3')
+        expected = {'universal-ai-starter/' + name for name in mapping['skill_files']}
+        self.assertEqual(set(release['sha256']), expected)
+        self.assertIn('universal-ai-starter/tests/test_sandbox_preflight.py', expected)
+        for name, source in mapping['skill_files'].items():
+            self.assertEqual(root / source, canonical / name)
+            self.assertEqual(hashlib.sha256((root / source).read_bytes()).hexdigest(),
+                             release['sha256']['universal-ai-starter/' + name])
+        with tempfile.TemporaryDirectory() as temp:
+            outputs = [Path(temp) / 'first.zip', Path(temp) / 'second.zip']
+            for output in outputs:
+                result = subprocess.run([sys.executable, str(SCRIPT), '--output', str(output)],
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(outputs[0].read_bytes(), outputs[1].read_bytes())
+            self.assertEqual(outputs[0].read_bytes(), (root / 'universal-ai-starter.zip').read_bytes())
+            with zipfile.ZipFile(outputs[0]) as archive:
+                self.assertEqual(set(archive.namelist()), expected | {'universal-ai-starter/release.json'})
+                self.assertEqual(json.loads(archive.read('universal-ai-starter/release.json')), release)
+                for name in expected:
+                    self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(), release['sha256'][name])
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

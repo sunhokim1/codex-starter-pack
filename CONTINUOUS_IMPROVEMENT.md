@@ -40,3 +40,11 @@ Use schema 3 typed plans and bounded dependency results. Keep per-task SEV selec
 Resume must detect workspace changes and require explicit successful reverification.
 Add regression coverage before changing these contracts; compare measured character
 counts separately from real token/cost/quality evidence. Never replay completed tasks.
+
+## 0.3.3 Windows permission preflight
+
+The new release adds the native managed sandbox probe before runtime preparation
+and project/skill/startup promotion. Preserve its fail-closed behavior and the ten
+feature checks. Packaging and offline regressions are separate from real Windows
+installation acceptance. Keep prior release source immutable; continue the existing
+installation/recovery backlog without granting permissions automatically.
