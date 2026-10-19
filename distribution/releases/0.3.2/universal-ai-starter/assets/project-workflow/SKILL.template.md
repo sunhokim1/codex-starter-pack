@@ -48,7 +48,16 @@ no background daemon or automatic replanning, and does not promise unattended de
 The planner must provide task-specific selection_context (facts, risks, dependencies),
 carrying applicable goal constraints and uncertainty without unrelated history or risk
 suppression. The controller classifies complete current instructions with this scope;
-execution retains the full project context. Review saved selection_scope/selection_input
+execution receives the full original goal and known facts, the current task, approval
+and a bounded previous-attempt diagnostic. Only direct dependencies contribute result
+summaries (up to 1,200 characters), changed paths (up to 20) and check statuses.
+Completed task instructions and unrelated results are not repeatedly appended.
+Detailed evidence remains in private state; read relevant files or private state for
+omitted details, but do not print private state. Review saved selection_scope/selection_input
 for routing evidence; a worker/main classification is not proof of coding success or cost
-savings. Schema 1 audits remain readable via status but require explicit reconciliation
-and archival before a new schema 2 start; never rewrite completed history to resume it.
+savings.
+
+New workflows use state schema 3. Schemas 1 and 2 remain readable via `status`, but
+cannot resume under the schema 3 contract. Explicitly reconcile pending edits and
+archive the old workflow directory before a new schema 3 start. Never automatically
+migrate or replay old completed tasks, or rewrite completed history to resume it.

@@ -6,7 +6,7 @@
     "universal-ai-starter/README.md": "d5c00488d8a2279b96a78079b04abc1e4d7bd6dc89bd2e8865261474b03e18e1",
     "universal-ai-starter/REPAIR_NOTES.md": "f3ea2e3ed5d6f41ee5a49cfd5685483daa0346550cb96f11a57fff8188ab2333",
     "universal-ai-starter/SKILL.md": "2c73f633edc7c41061d7c9deb8193b25e2fd0f2ee2254831b2a11c51a37eeda8",
-    "universal-ai-starter/assets/project-workflow/SKILL.template.md": "f9188b0c2b48673d8fb444f1cb8376a6d3f771fc58fc0f1e2f95a0b4c3e9790d",
+    "universal-ai-starter/assets/project-workflow/SKILL.template.md": "104120381122186dbee240a0176bc485a6bf781a3721fd776ee1ded1b84a0f57",
     "universal-ai-starter/assets/runner/PROJECT-WORKFLOW.md": "ac143e7b3f85c776ab12c4d4fc68f45269c4493561278094d5cc2eda9246359b",
     "universal-ai-starter/assets/runner/SKILL.template.md": "f878e7418771117ee20ff5fe1bb2ee0d567edcdb73bbe6b1fcbcf5136ab508df",
     "universal-ai-starter/assets/runner/project.py": "20b2fe412881c79f8ba89cec0963ea94350a94ffc93b7bea92680befab60f59f",
@@ -36,6 +36,6 @@
     "universal-ai-starter/scripts/scaffold.py": "d0ba936d6df2c0035866ca76c796ddc43f703e109fc98531e1f1824b68bbbf76",
     "universal-ai-starter/tests/test_project_workflow.py": "4072715abf276ce41eddf9056e289abdc763e075aa542031d63efcb56ef44867",
     "universal-ai-starter/tests/test_regressions.py": "4bbdafd21f512a820bdb3d255502879ceaac599fbfab9dcbbece99cb59a3b7e4",
-    "universal-ai-starter/tests/test_workflow_contracts.py": "21885106226b1271cbbfb1b593d73afaf5a929c0dbcf80ba27ce2d62dfec8fff"
+    "universal-ai-starter/tests/test_workflow_contracts.py": "eb63d927643b2773062150744b3b3af6f51adb43d211aea7aa612cfe4c97622b"
   }
 }
