@@ -18,6 +18,15 @@
 
 ## Windows에서 빠르게 시작하기
 
+### 한국어 관리자 앱 사용하기
+
+1. [Windows용 앱 ZIP 다운로드](https://github.com/sunhokim1/codex-starter-pack/releases/download/manager-v0.1.0/CodexStarterManager-0.1.0-win.zip)를 받아 별도 폴더에 압축을 푸세요. [배포 안내와 SHA256·내용 목록](https://github.com/sunhokim1/codex-starter-pack/releases/tag/manager-v0.1.0)에서 `artifacts.json`을 확인할 수 있습니다.
+2. 압축을 푼 폴더의 `CodexStarterManager.exe`를 실행하세요. 앱 실행에는 Python이나 별도 GUI 패키지가 필요하지 않습니다.
+3. 첫 실행에서 빈 폴더 또는 기존 프로젝트 폴더를 선택하세요. 앱이 배포를 확인하고 필요한 스타터팩 설치·업데이트·복구를 진행합니다. **완료**와 스타터팩 버전을 확인하세요.
+4. 이후에는 앱을 실행하면 기억한 프로젝트를 자동 확인하고 필요한 갱신을 진행합니다. **폴더 선택 / 변경**, **다시 확인**으로 대상을 바꾸거나 재시도할 수 있습니다. 앱 EXE 자체는 자동 교체하지 않습니다.
+
+실제 스타터팩 설치에는 Python 3.11+, 네이티브 Codex CLI와 사용자 인증, 계정에서 이용 가능한 코딩 모델이 필요합니다. 아래 준비물을 먼저 확인하세요. 기존 프로젝트 문서·설정과 사용자 파일을 보존하며, 관리되는 지침 블록만 갱신합니다. 실제 네트워크 설치는 검증하지 않았습니다. 자세한 준비사항·보존·복구 범위는 [관리자 앱 사용 안내](apps/starter-manager/README.md)를 참고하세요. 앱 버전은 0.1.0, 지원 스타터팩은 0.3.3이며, 아래 PowerShell 설치 경로도 사용할 수 있습니다.
+
 ### 준비물
 
 - Windows와 PowerShell, 인터넷 연결, 의존성·로컬 분류 모델을 내려받을 디스크 공간이 필요합니다.
@@ -73,6 +82,8 @@ python scripts/install_sev.py --target <project> --no-autostart
 설치 실패 시 새로 복사된 핵심 파일이나 진단용 새 배포 폴더가 남을 수 있습니다. 결과를 확인한 뒤 재시도하세요. 설치·보존·복구에 관한 자세한 내용은 [번들 안내](distribution/releases/0.3.3/universal-ai-starter/README.md)와 [프로젝트용 사용·복구 안내](distribution/releases/0.3.3/universal-ai-starter/assets/starter/README.md)를 참고하세요.
 
 ## 유지 관리자: 패키징·테스트·릴리스
+
+관리자 앱의 [소스·빌드·패키징 안내](apps/starter-manager/README.md)는 별도로 제공합니다. 앱 ZIP은 `apps/starter-manager/package.ps1`로 EXE와 한국어 안내서만 묶고, 함께 생성한 `artifacts.json`으로 해시를 대조합니다.
 
 유지 관리 원본은 [0.3.3 번들](distribution/releases/0.3.3/universal-ai-starter/README.md)입니다. 루트 `universal-ai-starter.zip`은 `distribution/manifest.json`에 따라 빌드되며 전체 소스와 회귀 테스트를 포함합니다. 배포된 0.3.1 및 0.3.2 소스는 변경하지 않습니다. 기존 프로젝트, 모델 매핑 및 가중치는 보존됩니다. 다음은 이 저장소의 유지 관리용 명령입니다.
 

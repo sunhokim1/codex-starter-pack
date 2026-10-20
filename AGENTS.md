@@ -8,8 +8,8 @@
 
 | Major subsystem | Entry point | Tests | Docs / schema | Nested AGENTS.md |
 | --- | --- | --- | --- | --- |
-| Application | Not initialized. | — | — | — |
-| UI / Design | Not initialized. | — | — | — |
+| Application | apps/starter-manager/App.cs, apps/starter-manager/Core.cs | tests/test_starter_manager.py, apps/starter-manager/CoreSelfTest.cs | apps/starter-manager/README.md | — |
+| UI / Design | apps/starter-manager/App.cs | apps/starter-manager/AppDiagnostics.cs, tests/test_starter_manager.py | apps/starter-manager/README.md | — |
 | Data / Storage | Not initialized. | — | — | — |
 | Services / Backend | Not initialized. | — | — | — |
 | Tests | Not initialized. | — | — | — |

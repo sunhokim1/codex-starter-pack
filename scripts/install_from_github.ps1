@@ -1,7 +1,16 @@
 # Public installer: irm https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/main/scripts/install_from_github.ps1 | iex
 # Saved-file usage: .\install_from_github.ps1 [-Target 'C:\your\project']
+[CmdletBinding()]
+param(
+    [Parameter(Position=0)][string]$Target,
+    [switch]$Manager,
+    [string]$SnapshotCommit,
+    [string]$ExpectedVersion
+)
+$starterExitCode = 0
+try {
 & {
-    param([string]$Target)
+    param([string]$Target, [bool]$Manager, [string]$SnapshotCommit, [string]$ExpectedVersion)
     $ErrorActionPreference = 'Stop'
     $ProgressPreference = 'SilentlyContinue'
     $PSNativeCommandUseErrorActionPreference = $false
@@ -55,16 +64,126 @@
         return $full
     }
 
-    function Get-StarterPublicZip {
+    function Assert-StarterUrl([string]$Value) {
+        $uri = $null
+        if (-not [Uri]::TryCreate($Value, [UriKind]::Absolute, [ref]$uri) -or
+            $uri.Scheme -cne 'https' -or $uri.Host -cne 'raw.githubusercontent.com' -or
+            $uri.Port -ne 443 -or $uri.UserInfo -or $uri.Query -or $uri.Fragment -or
+            $uri.AbsolutePath -cnotmatch '^/sunhokim1/codex-starter-pack/[0-9a-f]{40}/(universal-ai-starter\.zip|scripts/install_from_github\.ps1|\.ai/config\.yaml|distribution/releases/0\.3\.3/universal-ai-starter/release\.json)$') {
+            throw '허용되지 않은 다운로드 URL입니다.'
+        }
+        return $uri
+    }
+
+    function Get-StarterBytes([string]$Url, [int]$Limit) {
+        $uri = Assert-StarterUrl $Url
+        if ($Limit -le 0 -or $Limit -gt 32MB) { throw 'Invalid download limit.' }
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-        $client = New-Object Net.WebClient
+        $request = [Net.HttpWebRequest]::Create($uri)
+        $request.AllowAutoRedirect = $false
+        $request.Timeout = 30000
+        $request.ReadWriteTimeout = 30000
+        $response = $null
+        $inputStream = $null
+        $output = New-Object IO.MemoryStream
+        $clock = [Diagnostics.Stopwatch]::StartNew()
         try {
-            # Pin to the immutable verified ZIP commit to avoid branch-cache skew.
-            $url = 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/1f1a8e97e097e457cc1369c26cc652dfb57e15c0/universal-ai-starter.zip'
-            $bytes = $client.DownloadData($url)
-            if ($bytes.Length -eq 0 -or $bytes.Length -gt 32MB) { throw 'Unexpected ZIP download size.' }
-            return ,$bytes
-        } finally { $client.Dispose() }
+            $response = $request.GetResponse()
+            if ([int]$response.StatusCode -ne 200 -or $response.ContentLength -gt $Limit) {
+                throw 'Unexpected HTTP status, redirect or download size.'
+            }
+            $inputStream = $response.GetResponseStream()
+            $buffer = New-Object byte[] 8192
+            while (($count = $inputStream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                if ($clock.Elapsed.TotalSeconds -gt 60 -or $output.Length + $count -gt $Limit) {
+                    throw 'Download exceeded time or size limit.'
+                }
+                $output.Write($buffer, 0, $count)
+            }
+            if ($output.Length -eq 0) { throw 'Empty download.' }
+            return ,$output.ToArray()
+        } finally {
+            if ($inputStream) { $inputStream.Dispose() }
+            if ($response) { $response.Dispose() }
+            $output.Dispose()
+            $request.Abort()
+        }
+    }
+
+    function Get-StarterPublicZip {
+        # The ZIP pin is independent of the main snapshot selected by the manager.
+        return ,(Get-StarterBytes 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/1f1a8e97e097e457cc1369c26cc652dfb57e15c0/universal-ai-starter.zip' 32MB)
+    }
+
+    function Get-StarterSnapshot([string]$Commit, [string]$Version) {
+        if ($Commit -cnotmatch '^[0-9a-f]{40}$' -or $Version -cne '0.3.3') {
+            throw '지원하지 않는 snapshot 또는 배포 버전입니다.'
+        }
+        $base = "https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/$Commit"
+        $config = [Text.Encoding]::UTF8.GetString((Get-StarterBytes "$base/.ai/config.yaml" 1MB))
+        # Read only the expected starter block; another section's version must
+        # not satisfy this check. Reject duplicate keys and mismatched quotes.
+        $blocks = [regex]::Matches($config, '(?m)^starter:[ \t]*\r?\n((?:[ \t]+[^\r\n]*(?:\r?\n|$)|\r?\n)*)')
+        if ($blocks.Count -ne 1 -or
+            [regex]::Matches($config, '(?m)^starter:').Count -ne 1 -or
+            [regex]::Matches($blocks[0].Groups[1].Value, '(?m)^  version:').Count -ne 1 -or
+            $blocks[0].Groups[1].Value -cnotmatch '(?m)^  version: *(?<quote>[\x22\x27]?)0\.3\.3\k<quote> *\r?$') {
+            throw 'Snapshot 설정 버전이 일치하지 않습니다.'
+        }
+        $release = [Text.Encoding]::UTF8.GetString((Get-StarterBytes "$base/distribution/releases/0.3.3/universal-ai-starter/release.json" 1MB)) | ConvertFrom-Json
+        if ($release.version -cne $Version -or -not $release.sha256) { throw 'Snapshot release metadata가 올바르지 않습니다.' }
+        # Reject malformed manifests before downloading the ZIP as well as
+        # comparing them with the independent ZIP manifest during extraction.
+        Assert-StarterReleaseMatch $release $release
+        return $release
+    }
+
+    function Assert-StarterReleaseMatch($Snapshot, $Release) {
+        if ($Snapshot.version -cne $Release.version) { throw 'Snapshot/ZIP version mismatch.' }
+        $expected = @($Snapshot.sha256.PSObject.Properties)
+        $actual = @($Release.sha256.PSObject.Properties)
+        if ($expected.Count -ne $actual.Count -or $expected.Count -eq 0) { throw 'Snapshot/ZIP manifest mismatch.' }
+        foreach ($item in $expected) {
+            if ($item.Value -cnotmatch '^[0-9a-f]{64}$' -or
+                $Release.sha256.PSObject.Properties.Name -cnotcontains $item.Name -or
+                $Release.sha256.($item.Name) -cne $item.Value) { throw 'Snapshot/ZIP hash mismatch.' }
+        }
+    }
+
+    function Invoke-StarterManagedBundle([string]$Directory, [string]$Target) {
+        # Never use bootstrap here: it may install Python and register startup.
+        $python = $null
+        foreach ($candidate in @((Join-Path $env:LOCALAPPDATA 'Programs/Python/Python311/python.exe'), 'python.exe')) {
+            $command = Get-Command $candidate -ErrorAction SilentlyContinue
+            if ($command) {
+                & $command.Source -c 'import sys; sys.exit(0 if sys.version_info >= (3,11) else 1)' | Out-Host
+                if ($LASTEXITCODE -eq 0) { $python = $command.Source; break }
+            }
+        }
+        if (-not $python) { throw 'Python 3.11 이상을 사용자가 먼저 설치하고 다시 확인해 주세요. 자동 설치하지 않습니다.' }
+        # Native preflight, immutable deployment and transactional connection updates
+        # remain owned by the verified bundled install_sev.py.
+        $script = 'scaffold.py'
+        $arguments = @('--target', $Target, '--adopt', '--no-autostart')
+        if ((Test-Path -LiteralPath (Join-Path $Target 'AGENTS.md') -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path $Target '.ai/models.yaml') -PathType Leaf)) {
+            $script = 'install_sev.py'
+            $arguments = @('--target', $Target, '--no-autostart')
+        }
+        & $python (Join-Path $Directory $script) @arguments | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw '설치가 실패했습니다. 기존 연결은 보존됩니다. 준비사항과 권한을 확인한 뒤 다시 실행해 주세요.' }
+    }
+
+    function Assert-StarterInstalled([string]$Target, [string]$Version) {
+        $configPath = Assert-StarterPath (Join-Path $Target '.ai/sev.json')
+        $config = [IO.File]::ReadAllText($configPath) | ConvertFrom-Json
+        if ($config.version -cne $Version) { throw '설치 후 버전 확인에 실패했습니다.' }
+        foreach ($key in @('python', 'service', 'state', 'runner', 'project_runner')) {
+            if (-not $config.$key -or -not [IO.Path]::IsPathRooted($config.$key) -or
+                -not (Test-Path -LiteralPath (Assert-StarterPath $config.$key) -PathType Leaf)) {
+                throw "설치 후 필수 경로 확인에 실패했습니다: $key"
+            }
+        }
     }
 
     function Test-StarterEntryName([string]$Name) {
@@ -78,7 +197,7 @@
         }
     }
 
-    function Expand-VerifiedStarter([byte[]]$Bytes, [string]$Stage) {
+    function Expand-VerifiedStarter([byte[]]$Bytes, [string]$Stage, $Snapshot = $null) {
         Add-Type -AssemblyName System.IO.Compression
         $stream = New-Object IO.MemoryStream(,$Bytes)
         $zip = New-Object IO.Compression.ZipArchive($stream, [IO.Compression.ZipArchiveMode]::Read)
@@ -110,6 +229,7 @@
             $reader = New-Object IO.StreamReader($releaseEntry.Open())
             try { $release = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
             if ($release.version -ne '0.3.3' -or -not $release.sha256) { throw 'Expected starter release 0.3.3.' }
+            if ($Snapshot) { Assert-StarterReleaseMatch $Snapshot $release }
             $hashes = @($release.sha256.PSObject.Properties)
             if ($hashes.Count -ne ($entries.Count - 1)) { throw 'Release manifest does not cover every ZIP file.' }
             $required = @('SKILL.md', 'scripts/bootstrap.ps1', 'scripts/scaffold.py', 'scripts/install_sev.py',
@@ -151,8 +271,15 @@
     }
 
     # Select/cancel before ZIP download, skill changes or project writes.
+    if ($Manager -and [string]::IsNullOrWhiteSpace($Target)) {
+        [pscustomobject]@{schema=1; status='cancelled'; exitCode=2} | ConvertTo-Json -Compress
+        $script:starterExitCode = 2
+        return
+    }
     $Target = Select-StarterTarget $Target
-    if (-not $Target) { Write-Host 'Installation cancelled; no project files written.'; return }
+    if (-not $Target) { Write-Host 'Installation cancelled; no project files written.'; $script:starterExitCode = 2; return }
+    $snapshot = $null
+    if ($Manager) { $snapshot = Get-StarterSnapshot $SnapshotCommit $ExpectedVersion }
     $skills = Assert-StarterPath (Join-Path $HOME '.agents/skills')
     $runtime = Assert-StarterPath (Join-Path $HOME '.codex/sev')
     foreach ($protected in @($skills, $runtime, [IO.Path]::GetTempPath().TrimEnd('\'))) {
@@ -167,7 +294,13 @@
     $installed = Join-Path $skills 'universal-ai-starter'
     $backup = Join-Path $skills ('universal-ai-starter.backup-' + [Guid]::NewGuid().ToString('N'))
     try {
-        Expand-VerifiedStarter $bytes $stage
+        Expand-VerifiedStarter $bytes $stage $snapshot
+        if ($Manager) {
+            Invoke-StarterManagedBundle (Join-Path $stage 'universal-ai-starter/scripts') $Target
+            Assert-StarterInstalled $Target $ExpectedVersion
+            [pscustomobject]@{schema=1; status='installed'; exitCode=0; version=$ExpectedVersion; snapshot=$SnapshotCommit; target=$Target; autostart=$false; personalSkillReplaced=$false} | ConvertTo-Json -Compress
+            return
+        }
         $null = Assert-StarterPath $installed
         if (Test-Path -LiteralPath $installed) {
             if (-not (Test-Path -LiteralPath $installed -PathType Container)) { throw 'Installed skill path is not a directory.' }
@@ -203,7 +336,13 @@
     } finally {
         if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
     }
-} $(if ($args.Count -eq 0) { $null }
-    elseif ($args.Count -eq 1) { $args[0] }
-    elseif ($args.Count -eq 2 -and $args[0] -eq '-Target') { $args[1] }
-    else { throw 'Usage: install_from_github.ps1 [-Target <project-folder>]' })
+} $Target ([bool]$Manager) $SnapshotCommit $ExpectedVersion
+} catch {
+    $starterExitCode = 1
+    if ($Manager) {
+        # Do not serialize exception text: it may contain private paths or process output.
+        [pscustomobject]@{schema=1; status='error'; exitCode=1; message='설치 또는 검증에 실패했습니다. 준비사항과 네트워크를 확인하고 다시 실행해 주세요.'} | ConvertTo-Json -Compress
+        Write-Warning '관리기 설치 실패: Python 3.11+, Codex CLI 준비, 네트워크와 권한을 확인해 주세요. 자동 승격하지 않습니다.'
+    } else { throw }
+}
+if ($Manager) { exit $starterExitCode }

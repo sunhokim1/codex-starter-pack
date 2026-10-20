@@ -1,0 +1,17 @@
+{
+  "appVersion": "0.1.0",
+  "archive": "CodexStarterManager-0.1.0-win.zip",
+  "archiveSha256": "19097a7f6ce516fcbcb69568abd57dbd717aa2a22495045766c61e5006f4631a",
+  "files": [
+    {
+      "path": "CodexStarterManager.exe",
+      "bytes": 62976,
+      "sha256": "e12eb53556a3b4b83b083f3131d1876f3d12372ef007a495f90c0e5ceaaef487"
+    },
+    {
+      "path": "README.md",
+      "bytes": 17534,
+      "sha256": "a25fa0495d44583e1180b6ce4065c4e5633c9d9a9fc78cb0e5a92ae02fc80c9d"
+    }
+  ]
+}

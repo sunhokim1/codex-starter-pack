@@ -13,3 +13,4 @@ experiments/local-model-selector/model/
 .ai/project-workflow/
 .ai/reports/
 .ai/installation.lock
+apps/starter-manager/bin/
