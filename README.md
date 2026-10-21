@@ -1,15 +1,21 @@
-# Universal AI Starter 0.4.0과 Windows 관리자
+# Universal AI Starter와 Windows 관리자
 
-이 저장소는 Rev 기반 순차 개발 controller와 Windows WinForms 관리자 앱 로컬 0.2.0의 소스를 관리합니다. 새 원본은 [0.4.0 번들](distribution/releases/0.4.0/universal-ai-starter/README.md)이며 기존 0.3.1·0.3.2·0.3.3과 루트 ZIP은 보관합니다. 0.4.0은 GitHub 소스 게시 대상입니다. 소스 공개는 자동 업데이트용 새 릴리스 활성화와 별개이며, 별도 GitHub Release 생성이나 기존 설치의 자동 전환을 뜻하지 않습니다.
+이 저장소는 Rev 기반 순차 개발 controller와 Windows 관리자 앱을 관리합니다. 이 문서는 0.4.0 이후 라우팅 변경안을 설명합니다. 현재 공개된 0.4.0 소스 번들과 ZIP은 이 변경과 아직 동기화되지 않았으며, 동기화가 끝나기 전까지 기존 설치에 새 동작이 배포된 것으로 보아서는 안 됩니다.
 
-큰 목표는 Sol 계획, 구현 선택은 로컬 Rev를 사용합니다. 사용자 실행 override는 Rev를 우회합니다. 비교 평가와 유료 분류는 실행하지 않습니다. 모델 응답만으로 완료하지 않고 controller의 실제 검증 근거를 요구합니다. 앱 대화 모델이 바뀌는 것은 아닙니다.
+큰 목표는 `gpt-6.1-sol`이 계획하고 Python controller가 구현 작업을 순차 실행합니다. 작은 요청은 계획 호출 없이 시작할 수 있습니다. 구현 요청의 전체 문맥은 Unicode JSON 문자열로 로컬 Rev에 전달하고, Rev가 worker(`gpt-6-luna`) 또는 main(`gpt-6.1-sol`)을 선택합니다. 실행 모델 override가 있으면 Rev를 건너뜁니다. 계획 모델은 구현 모델을 고정하지 않으며 Codex 앱 대화 모델도 자동으로 바꾸지 않습니다.
 
-[명시적 이전 안내](distribution/releases/0.4.0/universal-ai-starter/MIGRATION.md)를 따르세요. 기존 프로젝트 사실·설정·완료 상태·공유 SEV·개인 skills를 자동 변경하지 않습니다. 기존 프로젝트 연결과 공유 SEV는 보존했습니다. 현재 저장소의 private bootstrap 연결과 검증 설정은 이 전환 작업 동안 그대로 사용하며 배포 템플릿과 구분합니다. 새 프로젝트 템플릿의 사실과 검증 명령은 미설정입니다. SEV/Rev 조건부 선택은 아직 미구현 제안입니다.
+새 라우팅 규칙에서는 유효한 정상 응답의 두 점수 중 큰 쪽을 선택하고 정확한 동률은 main에 배정합니다. 낮은 점수만으로 기권하지 않습니다. 점수는 선택지 확률이지 코딩 성공 확률이 아닙니다. 응답 오류, 인증 실패, 시간 초과, 입력 한도 초과는 중단하며 자동 fallback이나 유료 분류를 사용하지 않습니다.
 
-관리기는 고정 snapshot을 검증하여 소스·클라이언트·누락 템플릿을 자동 설치·업데이트하고 기존 사용자 지침·설정·연결·완료 기록을 보존합니다. 소스 설치와 선택적 Rev 환경 준비·연결, 인증된 실제 추론은 별도 상태입니다. 모델·서비스·환경 lock·여유 RAM 부재는 소스 업데이트를 막지 않습니다.
+모델 응답만으로 작업을 완료 처리하지 않습니다. 프로젝트에 설정된 검증 명령의 실제 근거가 있어야 완료됩니다. 오류나 시간 초과 뒤에는 원인과 부분 변경을 검토하고 명시적으로 재개합니다. 하위 에이전트, 자동 병렬 실행, 비교 평가는 사용하지 않습니다.
 
-Windows 11·Intel Iris Xe·CUDA 없음·총 RAM 약 15.7GiB 호스트에서 실제 Rev 모델 다운로드·로드·CPU 추론을 검증했습니다. 525토큰의 단일 입력 실험에서 2스레드·Normal은 296.922초, 4스레드·AboveNormal은 180.359초였습니다. 준비 단계는 2스레드를 유지했으며 모델 로드 시간은 이 추론 시간과 별도입니다. fast router 목표에는 미달했고 GPU는 미검증이며 정확도와 비용 절감은 측정하지 않았습니다.
+소스·클라이언트 설치, 실행 환경 준비, Rev 연결, 실제 인증 추론은 각각 별개 상태입니다. Windows나 CPU라는 이유만으로 일괄 거부하지 않으며 선택한 장치와 dtype의 메모리 및 의존성 역량을 검사합니다. 후보 진단 통과는 실제 추론 성공을 증명하지 않습니다.
 
-실제 요청의 응답은 main 0.674704, worker 0.325296였지만 정책 판정은 abstention이었습니다. 이는 Sol 코딩 실행 성공을 입증하지 않습니다. Rev 실제 smoke는 종료했습니다. Windows/CPU 일괄 금지가 아니며 선택 dtype의 자원과 실제 의존성 capability를 따로 검사합니다. fixture와 소스 빌드 결과는 실제 설치·추론의 증거가 아닙니다.
+기존 프로젝트의 지침·설정·연결·완료 기록은 보존합니다. 기존 SEV 설정은 자동 이전하지 않으며 호환되지 않는 실행 상태도 자동 재생하지 않습니다. 새 프로젝트 템플릿의 프로젝트 사실과 검증 명령은 사용자가 설정해야 합니다. [이전 안내](distribution/releases/0.4.0/universal-ai-starter/MIGRATION.md), [Rev 안내](distribution/releases/0.4.0/universal-ai-starter/assets/rev/README.md), [순차 실행 안내](distribution/releases/0.4.0/universal-ai-starter/assets/runner/README.md)를 확인하세요.
 
-기존 검증 기록은 루트 테스트 193개, 실패 0개, 건너뜀 2개이며 번들 원본 바이트·해시와 정식 릴리스 일치를 확인했습니다. 검증된 배포 ZIP의 SHA256은 `4882497a55c507f3903681cea430ee838540928c18dd9b3d32f076143921dbc4`입니다. [관리기 안내](apps/starter-manager/README.md)와 [패키징 안내](scripts/README.md)를 확인하세요.
+번들 테스트는 다음 명령으로 실행합니다.
+
+```powershell
+python -B -X utf8 -m unittest discover -s distribution/releases/0.4.0/universal-ai-starter/tests
+```
+
+격리된 Windows 환경에서는 파일·소켓 권한 때문에 일부 통합 테스트가 제한될 수 있습니다. 실행 환경과 테스트 결과를 함께 해석해야 합니다.
