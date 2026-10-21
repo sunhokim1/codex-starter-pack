@@ -1,0 +1,42 @@
+{
+  "serve_local.py.txt": {
+    "url": "https://raw.githubusercontent.com/robbalian/rev/7090e4458075865853cdc791b81436d580a7dc73/serve_local.py",
+    "sha256": "6f5c713495e633852162f1a686590af063c7df8b4b0cbcc5d04d26943538e2c6"
+  },
+  "server.py.txt": {
+    "url": "https://raw.githubusercontent.com/robbalian/rev/7090e4458075865853cdc791b81436d580a7dc73/serve/server.py",
+    "sha256": "e9a49213bb0824afa5776449dd1a5735ea096e3fed8c3868800a948b770cf441"
+  },
+  "model-card.md": {
+    "url": "https://huggingface.co/robbalian/rev-qwen3.5-4b/raw/6c0775534ff1759649aec470fc55d41c9b698219/README.md",
+    "sha256": "6743e8e9c63ed4fc7dda570a8da0c2ca9b9209f12003ff5ef6caa1ab71f5c3b0"
+  },
+  "metadata.json": {
+    "url": "https://huggingface.co/robbalian/rev-qwen3.5-4b/raw/6c0775534ff1759649aec470fc55d41c9b698219/metadata.json",
+    "sha256": "a5107b49df63b95ca7325851811c30e17d044f8bd8030bd11f053cf5f98f377b"
+  },
+  "adapter-manifest.json": {
+    "url": "https://huggingface.co/robbalian/rev-qwen3.5-4b/raw/6c0775534ff1759649aec470fc55d41c9b698219/manifest.json",
+    "sha256": "8c80ff3e5dfb743555fb504bdc3eea582859c4c266ec29ea2ee414a72bcb6e61"
+  },
+  "adapter-api.json": {
+    "url": "https://huggingface.co/api/models/robbalian/rev-qwen3.5-4b/revision/6c0775534ff1759649aec470fc55d41c9b698219?blobs=true",
+    "sha256": "cbc8d0208a5dae6c2a5ff6c0d16e007ba23d02edf6789ccb9ad1ede9190dad11"
+  },
+  "base-api.json": {
+    "url": "https://huggingface.co/api/models/Qwen/Qwen3.5-4B/revision/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a?blobs=true",
+    "sha256": "518e3d3ee278c93c50e36c4dc819077d3d21de0b24a70859c838b0a84d57d798"
+  },
+  "source-api.json": {
+    "url": "https://api.github.com/repos/robbalian/rev/commits/7090e4458075865853cdc791b81436d580a7dc73",
+    "sha256": "be4679e4c9235f5bbe821512af9e00442891a3bfc0e7fd7ba9fa077f88c46707"
+  },
+  "LICENSE.txt": {
+    "url": "https://raw.githubusercontent.com/robbalian/rev/7090e4458075865853cdc791b81436d580a7dc73/LICENSE",
+    "sha256": "902a19b9ada3a150a5124650c43dc8d0d69cec464921af847a39e0d8e80ad793"
+  },
+  "modal_image.py.txt": {
+    "url": "https://raw.githubusercontent.com/robbalian/rev/7090e4458075865853cdc791b81436d580a7dc73/serve/modal_image.py",
+    "sha256": "78a912ebb54924b6baa72f0c023bd6e69e1dca7878fbc2dafb2a1a4be54cbc1e"
+  }
+}

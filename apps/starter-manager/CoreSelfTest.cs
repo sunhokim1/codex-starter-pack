@@ -26,13 +26,13 @@ namespace StarterManager
                 if (url.EndsWith("release.json"))
                 {
                     var hashes = new Dictionary<string, string>();
-                    foreach (var name in new[] { "assets/sev/sev_service.py", "assets/runner/run.py", "assets/runner/project.py", "assets/runner/runtime_safety.py" }) hashes.Add("universal-ai-starter/" + name, Data.Hash(Source));
-                    foreach (var name in Transaction.CoreFiles.Where(n => n != ".ai/sev.json")) hashes.Add("universal-ai-starter/assets/starter/" + name, Data.Hash(Data.Utf8("fixture " + name)));
-                    return Data.Utf8(Data.Json(new { version = Mismatch ? "0.3.2" : "0.3.3", sha256 = hashes }));
+                    foreach (var name in new[] { "contracts/upstream.lock.json", "assets/rev/service.py", "assets/runner/run.py", "assets/runner/project.py", "assets/runner/runtime_safety.py", "scripts/install_from_github.ps1" }) hashes.Add("universal-ai-starter/" + name, Data.Hash(Source));
+                    foreach (var name in Transaction.CoreFiles.Where(n => n != ".ai/source-install.json")) hashes.Add("universal-ai-starter/assets/starter/" + name, Data.Hash(Data.Utf8("fixture " + name)));
+                    return Data.Utf8(Data.Json(new { version = Mismatch ? "0.3.2" : "0.4.0", sha256 = hashes }));
                 }
                 const string starter = "/assets/starter/";
                 if (url.Contains(starter)) return Data.Utf8("fixture " + url.Substring(url.IndexOf(starter, StringComparison.Ordinal) + starter.Length));
-                return Data.Utf8("# fixture installer never executed");
+                return Source;
             }
         }
         sealed class Idle : IActivityGuard
@@ -48,38 +48,21 @@ namespace StarterManager
             public void Install(string script, string stage, Snapshot snapshot, string work)
             {
                 Calls++; if (During != null) During();
-                foreach (var name in Transaction.CoreFiles)
-                {
-                    var path = Path.Combine(stage, name);
-                    if (files.Read(path) == null) files.Write(path, Data.Utf8("fixture " + name));
+                foreach (var name in Transaction.CoreFiles.Where(n=>n!=".ai/source-install.json")) {
+                    var path=Path.Combine(stage,name);if(files.Read(path)==null) files.Write(path,Data.Utf8("fixture "+name));
                 }
-                foreach (var name in new[] { "AGENTS.md", ".gitignore" })
-                {
-                    var path = Path.Combine(stage, name);
-                    string old = Data.Decode(files.Read(path));
-                    string block = name == "AGENTS.md" ? "<!-- starter-sev:start -->\nfixture\n<!-- starter-sev:end -->" : "# starter-private:start\nfixture\n# starter-private:end";
-                    string begin = name == "AGENTS.md" ? "<!-- starter-sev:start -->" : "# starter-private:start";
-                    string end = name == "AGENTS.md" ? "<!-- starter-sev:end -->" : "# starter-private:end";
-                    int first = old.IndexOf(begin, StringComparison.Ordinal), last = old.IndexOf(end, StringComparison.Ordinal);
-                    string merged = first < 0 ? old.TrimEnd() + "\n\n" + block + "\n" : old.Substring(0, first) + block + old.Substring(last + end.Length);
-                    files.Write(path, Data.Utf8(merged));
+                var hashes=new Dictionary<string,string>();
+                foreach(var item in snapshot.Hashes) {
+                    string name=".ai/starter-source/"+item.Key.Substring("universal-ai-starter/".Length);
+                    byte[] bytes=item.Key.Contains("/assets/starter/") ? Data.Utf8("fixture "+item.Key.Split(new[]{"/assets/starter/"},StringSplitOptions.None)[1]) : Network.Source;
+                    files.Write(Path.Combine(stage,name),bytes);hashes.Add(name,item.Value);
                 }
-                var deployment = Path.Combine(fixture, "r-" + Guid.NewGuid().ToString("N").Substring(0, 8)); files.MakeDirectory(deployment);
-                var config = new Dictionary<string, object> { { "version", "0.3.3" }, { "deployment", deployment }, { "skills", Path.Combine(fixture, "skills") } };
-                files.MakeDirectory((string)config["skills"]);
-                var paths = new Dictionary<string, string> { { "python", "venv/Scripts/python.exe" }, { "service", "sev_service.py" }, { "state", "service.json" }, { "runner", "runner/run.py" }, { "project_runner", "runner/project.py" } };
-                foreach (var pair in paths)
-                {
-                    var path = Path.Combine(deployment, pair.Value); config.Add(pair.Key, path);
-                    files.Write(path, pair.Key == "state" ? Data.Utf8("{\"port\":12345,\"pid\":42,\"token\":\"fixture-only\"}") : Network.Source);
-                }
-                files.Write(Path.Combine(deployment, "runtime_safety.py"), Network.Source);
-                files.Write(Path.Combine(deployment, "runner/runtime_safety.py"), Network.Source);
-                if (Incomplete) files.Delete((string)config["runner"]);
-                if (ChangeSettings) files.Write(Path.Combine(stage, ".ai/models.yaml"), Data.Utf8("should be blocked"));
-                files.Write(Path.Combine(stage, ".ai/sev.json"), Data.Utf8(Data.Json(config)));
-                files.Write(Path.Combine(stage, ".ai/installation.lock"), Data.Utf8("0"));
-                if (Fail) throw new ManagerException("fixture installer failure");
+                var manifest=Data.Utf8(Data.Json(new{version="0.4.0",sha256=snapshot.Hashes}));
+                files.Write(Path.Combine(stage,".ai/starter-source/release.json"),manifest);hashes.Add(".ai/starter-source/release.json",Data.Hash(manifest));
+                files.Write(Path.Combine(stage,".ai/source-install.json"),Data.Utf8(Data.Json(new{schema=1,version="0.4.0",snapshot=snapshot.Commit,sha256=hashes,execution_connected=false})));
+                if(Incomplete)files.Delete(Path.Combine(stage,".ai/starter-source/assets/runner/run.py"));
+                if(ChangeSettings)files.Write(Path.Combine(stage,".ai/models.yaml"),Data.Utf8("bad settings"));
+                if(Fail)throw new ManagerException("fixture installer failed");
             }
         }
         sealed class FaultFiles : FileStore
@@ -100,6 +83,95 @@ namespace StarterManager
         static Result Run(FileStore files, Network network, Installer installer, Idle idle, string project, string root)
         { return new ManagerCore(files, network, installer, idle, Path.Combine(root, "locks")).Run(project, CancellationToken.None, null); }
         public static int Execute(string root)
+        {
+            var fixture = Project(Path.GetFullPath(root), "s" + Guid.NewGuid().ToString("N").Substring(0,4));
+            try {
+                var files = new FaultFiles(); var net = new Network(); var idle = new Idle(); var installer = new Installer(files,fixture);
+                var fresh = Project(fixture,"한 ' $");
+                Assert(Run(files,net,installer,idle,fresh,fixture).Changed && installer.Calls==1,"fresh invokes installer to completion");
+                Assert(net.Resolves==1 && net.Urls.Where(u=>!u.Contains("api.github.com")).All(u=>u.Contains(Network.Commit)),"one immutable snapshot");
+                Assert(Run(files,net,installer,idle,fresh,fixture).Decision==Decision.Current && installer.Calls==1,"current without Rev no-op");
+                Assert(files.Read(Path.Combine(fresh,".ai/rev.json"))==null && files.Read(Path.Combine(fresh,".ai/sev.json"))==null,"no model or connection side effect");
+                foreach(var mode in new[]{"sev","rev"}) {
+                    var project=Project(fixture,mode); var saved=new Dictionary<string,byte[]>();
+                    foreach(var name in Transaction.CoreFiles.Where(n=>n!=".ai/source-install.json").Concat(new[]{".ai/"+mode+".json",".ai/rev-install.json",".ai/project-workflow/state.json",".ai/reports/completed.json",".env"})) {
+                        var bytes=Data.Utf8("custom "+name); saved.Add(name,bytes); files.Write(Path.Combine(project,name),bytes);
+                    }
+                    Run(files,net,installer,idle,project,fixture);
+                    foreach(var item in saved) Assert(Data.Hash(files.Read(Path.Combine(project,item.Key)))==Data.Hash(item.Value),"preserve "+mode+" "+item.Key);
+                    string receipt=Path.Combine(project,".ai/source-install.json");var config=Data.Parse(Data.Decode(files.Read(receipt)));config["version"]="0.3.3";
+                    string releasePath=Path.Combine(project,".ai/starter-source/release.json");var oldRelease=Data.Parse(Data.Decode(files.Read(releasePath)));oldRelease["version"]="0.3.3";var oldReleaseBytes=Data.Utf8(Data.Json(oldRelease));files.Write(releasePath,oldReleaseBytes);
+                    ((Dictionary<string,object>)config["sha256"])[".ai/starter-source/release.json"]=Data.Hash(oldReleaseBytes);files.Write(receipt,Data.Utf8(Data.Json(config)));
+                    Assert(Run(files,net,installer,idle,project,fixture).Decision==Decision.Update,"source update with unavailable Rev");
+                    config=Data.Parse(Data.Decode(files.Read(receipt)));config["version"]="9.0.0";files.Write(receipt,Data.Utf8(Data.Json(config)));int calls=installer.Calls;
+                    Assert(Run(files,net,installer,idle,project,fixture).Decision==Decision.Newer && installer.Calls==calls,"no downgrade");
+                }
+                string managed=Path.Combine(fresh,".ai/starter-source/assets/runner/run.py");files.Write(managed,Data.Utf8("custom source"));
+                Throws(()=>Run(files,net,installer,idle,fresh,fixture),"modified source stop");files.Write(managed,Network.Source);
+                string failure=Project(fixture,"failure");net.Mismatch=true;Throws(()=>Run(files,net,installer,idle,failure,fixture),"manifest identity");net.Mismatch=false;
+                net.Fail=true;Throws(()=>Run(files,net,installer,idle,failure,fixture),"network fail");net.Fail=false;
+                idle.Busy=true;Throws(()=>Run(files,net,installer,idle,failure,fixture),"active or unknown activity");idle.Busy=false;
+                installer.Fail=true;Throws(()=>Run(files,net,installer,idle,failure,fixture),"install rollback");installer.Fail=false;
+                Assert(files.Read(Path.Combine(failure,"AGENTS.md"))==null,"failed stage unchanged");
+                installer.Incomplete=true;Throws(()=>Run(files,net,installer,idle,failure,fixture),"incomplete source");installer.Incomplete=false;
+                var cancel=new CancellationTokenSource();installer.During=()=>cancel.Cancel();
+                Throws(()=>new ManagerCore(files,net,installer,idle,Path.Combine(fixture,"locks")).Run(failure,cancel.Token,null),"cancellation before publication");installer.During=null;
+                Assert(files.Read(Path.Combine(failure,"AGENTS.md"))==null,"cancel leaves target unchanged");
+                files.FailPath=Path.Combine(failure,".ai/source-install.json");files.Armed=true;files.AfterWrite=true;
+                Throws(()=>Run(files,net,installer,idle,failure,fixture),"publication interruption");files.AfterWrite=false;
+                Assert(files.Read(Path.Combine(failure,"AGENTS.md"))==null && files.Read(Path.Combine(failure,".ai/source-install.json"))==null,"before images restored");
+                var tx=new Transaction(files,failure);tx.Prepare();tx.Installing();Assert(new Transaction(files,failure).Recover(),"durable recovery");
+                using(new ByteLease(files,Path.Combine(fixture,"locks/manager.lock"))) Throws(()=>Run(files,net,installer,idle,fresh,fixture),"lock conflict");
+                string protocol=Project(fixture,"protocol");string script=Path.Combine(protocol,"installer.ps1");
+                files.Write(script,Data.Utf8("param([switch]$Manager,$Target,$SnapshotCommit,$ExpectedVersion)\n@{schema=1;status='installed';sourceStatus='installed';revStatus='preparation_needed';exitCode=0;version=$ExpectedVersion;snapshot=$SnapshotCommit;target=$Target;autostart=$false;personalSkillReplaced=$false}|ConvertTo-Json -Compress\nexit 0"));
+                var snap=new Snapshot{Version="0.4.0",Commit=Network.Commit,InstallerHash=Data.Hash(files.Read(script))};new PowerShellInstaller(files).Install(script,protocol,snap,protocol);Assert(true,"owned process completion contract");
+                files.Write(script,Data.Utf8("tamper"));Throws(()=>new PowerShellInstaller(files).Install(script,protocol,snap,protocol),"exact installer hash");
+                Console.WriteLine(checks+" deterministic fixture assertions. No network or real installation.");return 0;
+            } finally { Directory.Delete(fixture,true); }
+        }
+        public static int HistoricalExecute(string root)
+        {
+            root = Path.GetFullPath(root);
+            var fixture = Path.Combine(root, "rev-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(fixture);
+            try
+            {
+                var files = new FileStore(); var net = new Network(); var idle = new Idle(); var installer = new Installer(files, fixture);
+                var project = Project(fixture, "한글 ' $ & [프로젝트]");
+                var runtime = Project(fixture, "runtime");
+                var snapshot = new Snapshot { Version = "0.4.0", Hashes = new Dictionary<string,string>() };
+                foreach (var name in new[] { "contracts/upstream.lock.json", "assets/runner/run.py", "assets/runner/project.py", "assets/rev/service.py" })
+                { files.Write(Path.Combine(runtime,name), Network.Source); snapshot.Hashes.Add("universal-ai-starter/"+name,Data.Hash(Network.Source)); }
+                var python = Path.Combine(fixture,"python.exe"); files.Write(python,Network.Source);
+                var config = new Dictionary<string,object> { {"version","0.4.0"},{"deployment",runtime},{"python",python},{"runner",Path.Combine(runtime,"assets/runner/run.py")},{"project_runner",Path.Combine(runtime,"assets/runner/project.py")} };
+                var connection = new Dictionary<string,object> { {"contract_version",1},{"runtime_version","0.4.0"},{"runtime_id","fixture"},{"endpoint","http://127.0.0.1:12345"},{"token_env","REV_TOKEN"},{"lock_sha256",Data.Hash(Network.Source)} };
+                config["connection"] = connection;
+                var inspector = new RuntimeInspector(files);
+                Assert(inspector.Healthy(config,snapshot),"new connection static integrity");
+                foreach(var endpoint in new[]{"http://0.0.0.0:12","http://example.com:12","http://user:secret@127.0.0.1:12","http://127.0.0.1:12/path","http://127.0.0.1:12?x=1"})
+                { connection["endpoint"]=endpoint; Assert(!inspector.Healthy(config,snapshot),"external/invalid endpoint rejected"); }
+                connection["endpoint"]="http://127.0.0.1:12345";
+                connection["lock_sha256"]=new string('0',64); Assert(!inspector.Healthy(config,snapshot),"lock identity"); connection["lock_sha256"]=Data.Hash(Network.Source);
+                files.Write(Path.Combine(runtime,"assets/rev/service.py"),Data.Utf8("tampered")); Assert(!inspector.Healthy(config,snapshot),"source integrity"); files.Write(Path.Combine(runtime,"assets/rev/service.py"),Network.Source);
+                files.Write(Path.Combine(project,".ai/sev.json"),Data.Utf8("{\"version\":\"0.3.3\"}"));
+                var legacy=files.Read(Path.Combine(project,".ai/sev.json")); Assert(Data.Text(inspector.Config(project),"version")=="0.3.3" && inspector.Decide(project,snapshot)==Decision.Update,"legacy status readable; explicit migration required");
+                files.Write(Path.Combine(project,".ai/rev.json"),Data.Utf8(Data.Json(connection)));
+                config.Remove("connection"); files.Write(Path.Combine(project,".ai/rev-install.json"),Data.Utf8(Data.Json(config)));
+                Assert(inspector.Decide(project,snapshot)==Decision.Current,"new metadata read");
+                Assert(Data.Hash(legacy)==Data.Hash(files.Read(Path.Combine(project,".ai/sev.json"))),"legacy bytes preserved");
+                files.Delete(Path.Combine(project,".ai/rev-install.json"));
+                // Explicit migration failure cannot launch an installer or replay tasks.
+                net.Mismatch=true; Throws(()=>Run(files,net,installer,idle,project,fixture),"metadata mismatch stops"); Assert(installer.Calls==0,"no automatic installer");
+                var transaction = new Transaction(files,project); transaction.Prepare(); transaction.Installing();
+                Assert(new Transaction(files,project).Recover(),"existing transaction recovery retained");
+                string smoke=Path.Combine(fixture,"native.txt");
+                Assert(OwnedProcess.Run("[IO.File]::WriteAllText("+PowerShellInstaller.Literal(smoke)+",'ok');exit 0",fixture)==0 && File.ReadAllText(smoke)=="ok","job-owned PowerShell smoke");
+                foreach(var url in new[]{"http://api.github.com/","https://evil.example/","https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/main/scripts/install_from_github.ps1"}) Throws(()=>HttpsTransport.Validate(url),"URL boundary");
+                Console.WriteLine(checks+" deterministic fixture assertions. No network or real installation."); return 0;
+            }
+            finally { Directory.Delete(fixture,true); }
+        }
+        // Historical automatic-install fixtures retained as reference; 0.4.0 does not execute this protocol.
+        static int LegacyTransactionFixtures(string root)
         {
             root = Path.GetFullPath(root); Directory.CreateDirectory(root);
             string fixture = Path.Combine(root, "m-" + Guid.NewGuid().ToString("N").Substring(0, 8)); Directory.CreateDirectory(fixture);
@@ -148,7 +220,7 @@ namespace StarterManager
                 Throws(() => Run(files, network, installer, idle, concurrent, fixture), "concurrent edit prevents publish"); installer.During = null;
                 Assert(Data.Decode(files.Read(Path.Combine(concurrent, "AGENTS.md"))) == "user edit during install", "concurrent edit retained");
                 var preserve = Project(fixture, "preserve");
-                foreach (var name in Transaction.CoreFiles.Where(n => n != ".ai/sev.json")) files.Write(Path.Combine(preserve, name), Data.Utf8("user " + name));
+                foreach (var name in Transaction.CoreFiles.Where(n => n != ".ai/source-install.json")) files.Write(Path.Combine(preserve, name), Data.Utf8("user " + name));
                 files.Write(Path.Combine(preserve, "code.cs"), Data.Utf8("user code"));
                 files.Write(Path.Combine(preserve, ".env"), Data.Utf8("fixture secret"));
                 installer.ChangeSettings = true; Throws(() => Run(files, network, installer, idle, preserve, fixture), "settings mutation rejected"); installer.ChangeSettings = false;

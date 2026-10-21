@@ -48,3 +48,7 @@ and project/skill/startup promotion. Preserve its fail-closed behavior and the t
 feature checks. Packaging and offline regressions are separate from real Windows
 installation acceptance. Keep prior release source immutable; continue the existing
 installation/recovery backlog without granting permissions automatically.
+
+## 0.4.0 Rev 전환
+
+새 canonical 소스와 설치·패키지 경계는 distribution/releases/0.4.0/universal-ai-starter/에 있다. 마지막 단계의 typed 실패 복구와 검토 후 제한된 순차 승격·Sol 재계획 제안을 구현했다. 실제 프로젝트 이전·설치·Rev 추론·공개 배포는 수행하지 않았다. 현재 저메모리 Intel Windows 장비는 지원하지 않는다. 환경 lock 완성과 지원 호스트 실검증은 별도 작업이다. 보관 릴리스와 private bootstrap 설정은 유지한다. 최종 설정 검사는 외부 controller 결과를 확인해야 한다.

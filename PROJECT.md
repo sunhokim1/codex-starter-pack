@@ -2,7 +2,7 @@
 
 ## 유형과 목표
 
-Universal AI Development Starter 0.3.3 배포 소스와 Windows용 Codex Starter 관리자 앱을 관리합니다. 관리기는 처음 선택한 프로젝트 폴더를 기억하고 실행할 때 스타터팩을 확인하여 필요한 설치·업데이트·복구를 자동 처리합니다. 빈 폴더와 기존 프로젝트를 모두 지원합니다.
+Universal AI Development Starter 0.4.0 배포 소스와 Windows용 Codex Starter 관리자 앱을 관리합니다. 관리기는 처음 선택한 프로젝트 폴더를 기억하고 고정 snapshot의 무결성을 검증하여 소스·클라이언트·누락 템플릿을 자동 설치·업데이트합니다. 빈 폴더와 기존 SEV·Rev 프로젝트를 지원하며 기존 실행 연결과 사용자 설정을 보존합니다.
 
 ## 주요 사용자
 
@@ -10,7 +10,7 @@ Universal AI Development Starter 0.3.3 배포 소스와 Windows용 Codex Starter
 
 ## 기술 스택과 실행 환경
 
-관리기는 Windows 기본 .NET Framework C# WinForms이며 `C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe`로 빌드합니다. 앱 버전은 0.1.0이고 현재 지원 스타터 버전은 0.3.3입니다. EXE 자체는 Python이나 외부 GUI 패키지가 필요 없습니다. 스타터 runtime에는 Python 3.11 이상과 설치·로그인된 native Codex CLI 및 native sandbox 준비가 필요합니다.
+관리기는 Windows 기본 .NET Framework C# WinForms이며 `C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe`로 빌드합니다. 로컬 앱 버전은 0.2.0이고 지원 스타터 버전은 0.4.0입니다. 공개 앱 0.1.0과 구분하며 새 버전을 게시하지 않았습니다. EXE 자체는 외부 GUI 패키지가 필요 없고 소스 설치에는 Python 3.11 이상을 사용합니다. 실제 실행에는 설치·로그인된 native Codex CLI 및 native sandbox 준비가 별도로 필요합니다.
 
 ## 구조와 화면
 
@@ -24,4 +24,8 @@ Universal AI Development Starter 0.3.3 배포 소스와 Windows용 Codex Starter
 
 ## 제약과 기존 배포 사실
 
-canonical runtime은 `distribution/releases/0.3.3/universal-ai-starter/`이며 root/experiments 호환 진입점은 이를 사용합니다. 기존 immutable 0.3.1·0.3.2·0.3.3 번들, ZIP, manifest는 관리기 구현 때문에 변경하지 않습니다. 프로젝트 코드·문서·사용자 지침·모델/routing/검증 설정·작업기록·인증·비밀값과 개인 skills를 보존합니다. 자동 권한 부여·관리자 승격·정책/인증 변경·유료 모델 호출·실제 PC 설치·자동시작 변경은 수행하지 않습니다. 앱 자체 자동 교체와 외부 게시는 범위 밖입니다. 관리기의 로컬 빌드 산출물은 기존 스타터 ZIP과 별도로 취급합니다.
+canonical runtime은 `distribution/releases/0.4.0/universal-ai-starter/`이며 root/experiments 호환 진입점은 이를 사용합니다. 기존 immutable 0.3.1·0.3.2·0.3.3 번들, ZIP, manifest는 관리기 구현 때문에 변경하지 않습니다. 프로젝트 코드·문서·사용자 지침·모델/routing/검증 설정·작업기록·인증·비밀값과 개인 skills를 보존합니다. 자동 권한 부여·관리자 승격·정책/인증 변경·유료 모델 호출·실제 PC 설치·자동시작 변경은 수행하지 않습니다. 앱 자체 자동 교체와 외부 게시는 범위 밖입니다. 관리기의 로컬 빌드 산출물은 기존 스타터 ZIP과 별도로 취급합니다.
+
+소스 버전·무결성 영수증은 `.ai/source-install.json`, 관리 소스는 `.ai/starter-source/`에 둡니다. 모델·환경 lock·서비스·연결·여유 RAM 부재는 소스 업데이트를 막지 않습니다. 수정된 관리 파일, 활성·불확실한 workflow와 모호한 journal은 개별 검토를 위해 중단하며 잠금·백업·롤백·취소 보호를 유지합니다. 호환되지 않는 실행 설정·상태는 자동 변환하거나 완료 작업을 재생하지 않습니다.
+
+선택적 Rev 환경 준비·연결 이전과 인증된 실제 추론은 별도 명시 작업입니다. CPU와 Windows CUDA도 선택 가능하며 dtype별 메모리 추정과 실제 의존성·장치 capability를 확인합니다. Windows 11·Intel Iris Xe 호스트의 총 RAM 약 15.7GiB는 CPU fp32 추정 약 39.53GiB에 부족합니다. OS 금지가 아니며 이 장비에서 모델 다운로드·로드·추론을 수행하지 않았습니다. 검토된 환경 lock과 실제 추론, 원격 0.4.0 게시도 미완료입니다.

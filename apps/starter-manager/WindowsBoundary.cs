@@ -14,13 +14,16 @@ namespace StarterManager
         public WindowsActivityGuard(FileStore files) { this.files = files; }
         public void AssertIdle(string project)
         {
-            var bytes = files.Read(Path.Combine(project, ".ai/project-workflow/state.json"));
+            foreach (var statePath in new[] { ".ai/project-workflow/state.json", ".ai/rev-workflow/state.json" })
+            {
+            var bytes = files.Read(Path.Combine(project, statePath));
             if (bytes != null)
             {
                 var state = Data.Parse(Data.Decode(bytes));
                 // A released byte lock does not prove that a crashed controller's children stopped.
                 if (Data.Text(state, "status") != "completed")
                     throw new ManagerException("완료되지 않은 프로젝트 workflow가 있습니다. 작업과 자손 프로세스를 먼저 정리한 뒤 다시 확인해 주세요.");
+            }
             }
             foreach (var path in files.Files(Path.Combine(project, ".ai/reports")))
             {
@@ -83,12 +86,12 @@ namespace StarterManager
                 "[IO.File]::WriteAllText(" + Literal(result) + ",[string]$_,(New-Object Text.UTF8Encoding($false)))}}catch{}}};exit $LASTEXITCODE";
             int exit = OwnedProcess.Run(command, work);
             var bytes = files.Read(result);
-            if (exit != 0 || bytes == null) throw new ManagerException("설치기가 실패했습니다. Python 3.11 이상, Codex CLI 설치·로그인, native sandbox 준비를 확인해 주세요. 권한을 자동 변경하지 않습니다.");
+            if (exit != 0 || bytes == null) throw new ManagerException("설치기가 실패했습니다. Python 3.11 이상과 검증된 배포 snapshot의 게시 여부를 확인해 주세요. 권한을 자동 변경하지 않습니다.");
             var json = Data.Parse(Data.Decode(bytes));
             object schema, code, autostart, skills;
             if (!json.TryGetValue("schema", out schema) || !(schema is int) || (int)schema != 1 ||
                 !json.TryGetValue("exitCode", out code) || !(code is int) || (int)code != 0 ||
-                Data.Text(json, "status") != "installed" || Data.Text(json, "version") != snapshot.Version ||
+                Data.Text(json, "status") != "installed" || Data.Text(json,"sourceStatus") != "installed" || Data.Text(json,"revStatus") != "preparation_needed" || Data.Text(json, "version") != snapshot.Version ||
                 Data.Text(json, "snapshot") != snapshot.Commit || !String.Equals(Data.Text(json, "target"), stage, StringComparison.OrdinalIgnoreCase) ||
                 !json.TryGetValue("autostart", out autostart) || !(autostart is bool) || (bool)autostart ||
                 !json.TryGetValue("personalSkillReplaced", out skills) || !(skills is bool) || (bool)skills)
@@ -152,11 +155,12 @@ namespace StarterManager
                     throw new ManagerException("Windows PowerShell을 시작할 수 없습니다.");
                 if (!AssignProcessToJobObject(job, pi.process)) { TerminateProcess(pi.process, 1); throw new ManagerException("설치 프로세스를 보호할 수 없어 실행하지 않았습니다."); }
                 if (ResumeThread(pi.thread) == UInt32.MaxValue) throw new ManagerException("설치 프로세스를 실행할 수 없습니다.");
-                if (WaitForSingleObject(pi.process, UInt32.MaxValue) != 0) throw new ManagerException("설치 프로세스 종료 확인에 실패했습니다.");
+                if (WaitForSingleObject(pi.process, 600000) != 0) throw new ManagerException("설치 프로세스 종료 확인에 실패했습니다.");
                 uint code;
                 if (!GetExitCodeProcess(pi.process, out code)) throw new ManagerException("설치 종료코드를 확인할 수 없습니다.");
                 if (code == 0)
                 {
+                    StopTree(job); // Source installer must leave no child service behind.
                     limits.basic.flags = 0;
                     if (!SetInformationJobObject(job, 9, ref limits, (uint)Marshal.SizeOf(limits))) throw new ManagerException("새 서비스의 프로세스 보호 전환에 실패했습니다.");
                 }

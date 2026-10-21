@@ -1,3 +1,6 @@
+import sys
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]/"distribution/releases/0.3.3/universal-ai-starter/assets/runner"))
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]/"distribution/releases/0.3.3/universal-ai-starter/scripts"))
 import importlib.util
 import json
 import hashlib
@@ -6,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-SCRIPT=Path(__file__).resolve().parents[1]/'distribution/skill/scripts/install_sev.py'
+SCRIPT=Path(__file__).resolve().parents[1]/'distribution/releases/0.3.3/universal-ai-starter/scripts/install_sev.py'
 spec=importlib.util.spec_from_file_location('install_sev',SCRIPT)
 installer=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)

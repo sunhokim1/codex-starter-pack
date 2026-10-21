@@ -10,10 +10,12 @@
 | --- | --- | --- | --- | --- |
 | Application | apps/starter-manager/App.cs, apps/starter-manager/Core.cs | tests/test_starter_manager.py, apps/starter-manager/CoreSelfTest.cs | apps/starter-manager/README.md | — |
 | UI / Design | apps/starter-manager/App.cs | apps/starter-manager/AppDiagnostics.cs, tests/test_starter_manager.py | apps/starter-manager/README.md | — |
+| Rev runtime | distribution/releases/0.4.0/universal-ai-starter/assets/rev/service.py | tests/test_rev_runtime.py | distribution/releases/0.4.0/universal-ai-starter/assets/rev/README.md | distribution/releases/0.4.0/universal-ai-starter/AGENTS.md |
+| Sequential controller | distribution/releases/0.4.0/universal-ai-starter/assets/runner/controller.py | tests/test_rev_controller.py, tests/test_rev_distribution.py | distribution/releases/0.4.0/universal-ai-starter/MIGRATION.md | distribution/releases/0.4.0/universal-ai-starter/AGENTS.md |
 | Data / Storage | Not initialized. | — | — | — |
 | Services / Backend | Not initialized. | — | — | — |
 | Tests | Not initialized. | — | — | — |
-| Infrastructure | starter 배포/Windows 설치: scripts/package_starter.py, scripts/install_from_github.ps1 (원본 관리 저장소만) | tests/test_package_starter.py, tests/test_github_installer.py, tests/test_install_sev.py (원본만) | distribution/manifest.json, scripts/README.md | — |
+| Infrastructure | starter 배포/Windows 설치: scripts/package_starter.py, scripts/install_from_github.ps1, distribution/releases/0.4.0/universal-ai-starter/scripts/install_rev.py | tests/test_package_starter.py, tests/test_github_installer.py, tests/test_install_sev.py (원본만) | distribution/manifest.json, scripts/README.md | — |
 
 해당 영역 작업 시 map이 연결한 nested AGENTS.md부터 읽는다. 개별 파일 목록은 기록하지 않는다.
 새 subsystem이나 중요한 architecture boundary가 생길 때 map을 갱신하고,
@@ -70,12 +72,16 @@ The app chat model does not change. This is instruction-based invocation, not in
 <!-- starter-sev:end -->
 
 
-## Maintained 0.3.3 source
+## Maintained 0.4.0 source
 
-The source of truth is distribution/releases/0.3.3/universal-ai-starter/.
+The source of truth is distribution/releases/0.4.0/universal-ai-starter/.
 Read its AGENTS.md for edits inside that bundle. Root/experiments compatibility entry points
 forward into that source; do not create a second implementation. distribution/manifest.json
 maps the complete bundle for scripts/package_starter.py. Preserve existing project facts.
 Run root tests and the bundled regressions; distinguish mocks from actual installation.
 Do not install, run paid models or modify startup entries merely to validate packaging.
 See CONTINUOUS_IMPROVEMENT.md for remaining work.
+
+관리기는 starter 소스·클라이언트를 자동 설치·업데이트하되 기존 지침·설정·실행 연결·완료 기록을 보존한다. 소스 버전·무결성과 선택적 Rev 환경 준비·인증된 실제 추론은 별개다. 자원·모델·환경 lock·서비스 부재는 소스 업데이트를 막지 않는다. CPU·Windows CUDA는 선택 device/dtype의 자원과 실제 capability로 판단하며 OS만으로 거부하지 않는다. 활성·불확실한 상태와 수정된 관리 파일은 개별 검토하며 완료 작업을 재생하지 않는다.
+
+0.4.0 Rev 연결은 명시적으로 이전한다. 보관된 0.3.1·0.3.2·0.3.3 소스와 ZIP, private bootstrap 설정은 변경하지 않는다. 새 runtime/설치 경계 지침은 0.4.0 AGENTS.md에서 확인한다.

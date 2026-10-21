@@ -40,7 +40,7 @@ namespace StarterManager
             if (result == null) throw new ManagerException("JSON 형식을 확인할 수 없습니다.");
             return result;
         }
-        public static string Json(object value) { return new JavaScriptSerializer().Serialize(value); }
+        public static string Json(object value) { return new JavaScriptSerializer { MaxJsonLength=16*1024*1024 }.Serialize(value); }
         public static string Text(Dictionary<string, object> obj, string key)
         {
             object value; return obj.TryGetValue(key, out value) ? value as string : null;
@@ -113,7 +113,7 @@ namespace StarterManager
             }
             if (Directory.Exists(path)) throw new ManagerException("파일 위치에 폴더가 있습니다.");
             if (!File.Exists(path)) return null;
-            if (new FileInfo(path).Length > 2 * 1024 * 1024) throw new ManagerException("프로젝트 관리 파일 크기 제한을 초과했습니다.");
+            if (new FileInfo(path).Length > (path.EndsWith("journal.json") ? 16 : 2) * 1024 * 1024) throw new ManagerException("프로젝트 관리 파일 크기 제한을 초과했습니다.");
             return File.ReadAllBytes(path);
         }
         public virtual bool FilePresent(string path) { Safe(path); return File.Exists(path) && new FileInfo(path).Length > 0; }
@@ -157,18 +157,24 @@ namespace StarterManager
                 uri.UserInfo != "" || uri.Query != "" || uri.Fragment != "") throw new ManagerException("허용되지 않은 다운로드 주소입니다.");
             bool api = uri.Host == "api.github.com" && uri.AbsolutePath == "/repos/sunhokim1/codex-starter-pack/commits/main";
             bool raw = uri.Host == "raw.githubusercontent.com" && Regex.IsMatch(uri.AbsolutePath,
-                @"^/sunhokim1/codex-starter-pack/[0-9a-f]{40}/(\.ai/config\.yaml|scripts/install_from_github\.ps1|distribution/releases/0\.3\.3/universal-ai-starter/(release\.json|assets/starter/(AGENTS\.md|PROJECT\.md|README\.md|\.gitignore|\.ai/(config|models|routing|verification)\.yaml)))$");
+                @"^/sunhokim1/codex-starter-pack/[0-9a-f]{40}/(scripts/install_from_github\.ps1|distribution/releases/0\.4\.0/universal-ai-starter/release\.json)$");
             if (!api && !raw) throw new ManagerException("허용되지 않은 다운로드 주소입니다.");
             return uri;
         }
-        public byte[] Get(string url, int limit, CancellationToken cancellation)
+        public byte[] Get(string url,int limit,CancellationToken cancellation) {
+            for(int attempt=0;;attempt++) {
+                try { return Download(url,limit,cancellation); }
+                catch(ManagerException) { cancellation.ThrowIfCancellationRequested(); if(attempt>=1)throw; }
+            }
+        }
+        byte[] Download(string url, int limit, CancellationToken cancellation)
         {
             if (limit <= 0 || limit > 2 * 1024 * 1024) throw new ArgumentOutOfRangeException("limit");
             var uri = Validate(url);
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
             var request = (HttpWebRequest)WebRequest.Create(uri);
             request.AllowAutoRedirect = false; request.Timeout = 30000; request.ReadWriteTimeout = 15000;
-            request.UserAgent = "Codex-Starter-Manager/0.1.0";
+            request.UserAgent = "Codex-Starter-Manager/0.2.0";
             request.Accept = "application/vnd.github+json";
             using (cancellation.Register(request.Abort))
             using (var deadline = new Timer(delegate { request.Abort(); }, null, 60000, Timeout.Infinite))
@@ -204,7 +210,7 @@ namespace StarterManager
     }
     public sealed class Snapshot
     {
-        public const string SupportedVersion = "0.3.3";
+        public const string SupportedVersion = "0.4.0";
         public string Commit, Version, InstallerHash; public Dictionary<string, string> Hashes;
         public string BaseUrl { get { return "https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/" + Commit; } }
         public static Snapshot Fetch(ITransport network, CancellationToken cancel)
@@ -212,13 +218,7 @@ namespace StarterManager
             var commit = Data.Text(Data.Parse(Data.Decode(network.Get("https://api.github.com/repos/sunhokim1/codex-starter-pack/commits/main", 1024 * 1024, cancel))), "sha");
             if (commit == null || !Regex.IsMatch(commit, "^[0-9a-f]{40}$")) throw new ManagerException("main commit을 확인할 수 없습니다.");
             var snapshot = new Snapshot { Commit = commit, Version = SupportedVersion, Hashes = new Dictionary<string, string>(StringComparer.Ordinal) };
-            var config = Data.Decode(network.Get(snapshot.BaseUrl + "/.ai/config.yaml", 1024 * 1024, cancel));
-            var blocks = Regex.Matches(config, @"(?m)^starter:[ \t]*\r?\n((?:[ \t]+[^\r\n]*(?:\r?\n|$)|\r?\n)*)");
-            if (blocks.Count != 1 || Regex.Matches(config, @"(?m)^starter:").Count != 1 ||
-                Regex.Matches(blocks[0].Groups[1].Value, @"(?m)^  version:").Count != 1 ||
-                !Regex.IsMatch(blocks[0].Groups[1].Value, "(?m)^  version: *(?<q>[\"']?)0\\.3\\.3\\k<q> *\\r?$"))
-                throw new ManagerException("지원 배포 버전과 snapshot 설정이 다릅니다. 관리기 업데이트가 필요합니다.");
-            var release = Data.Parse(Data.Decode(network.Get(snapshot.BaseUrl + "/distribution/releases/0.3.3/universal-ai-starter/release.json", 1024 * 1024, cancel)));
+            var release = Data.Parse(Data.Decode(network.Get(snapshot.BaseUrl + "/distribution/releases/0.4.0/universal-ai-starter/release.json", 1024 * 1024, cancel)));
             object hashes; var map = release.TryGetValue("sha256", out hashes) ? hashes as Dictionary<string, object> : null;
             if (Data.Text(release, "version") != snapshot.Version || map == null || map.Count == 0 || map.Count > 256)
                 throw new ManagerException("배포 metadata가 일치하지 않습니다.");
@@ -228,8 +228,15 @@ namespace StarterManager
                     !(pair.Value is string) || !Regex.IsMatch((string)pair.Value, "^[0-9a-f]{64}$")) throw new ManagerException("배포 해시 목록이 올바르지 않습니다.");
                 snapshot.Hashes.Add(pair.Key, (string)pair.Value);
             }
-            foreach (var key in new[] { "assets/sev/sev_service.py", "assets/runner/run.py", "assets/runner/project.py", "assets/runner/runtime_safety.py" })
+            if (snapshot.Hashes.Keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() != snapshot.Hashes.Count ||
+                snapshot.Hashes.Keys.Any(k => k.Split('/').Any(p => p.EndsWith(".") || Regex.IsMatch(p,@"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)",RegexOptions.IgnoreCase))))
+                throw new ManagerException("Windows 경로 별칭이 있는 배포입니다.");
+            foreach (var key in new[] { "contracts/upstream.lock.json", "assets/rev/service.py", "assets/runner/run.py", "assets/runner/project.py", "assets/runner/runtime_safety.py" })
                 if (!snapshot.Hashes.ContainsKey("universal-ai-starter/" + key)) throw new ManagerException("필수 배포 해시가 없습니다.");
+            string installerHash;
+            if (!snapshot.Hashes.TryGetValue("universal-ai-starter/scripts/install_from_github.ps1", out installerHash))
+                throw new ManagerException("검증된 설치기 해시가 없습니다.");
+            snapshot.InstallerHash = installerHash;
             return snapshot;
         }
     }
@@ -240,8 +247,16 @@ namespace StarterManager
         public RuntimeInspector(FileStore files) { this.files = files; }
         public Dictionary<string, object> Config(string target)
         {
-            var value = files.Read(Path.Combine(target, ".ai/sev.json"));
-            return value == null ? null : Data.Parse(Data.Decode(value));
+            var value = files.Read(Path.Combine(target, ".ai/rev-install.json"));
+            if (value == null)
+            {
+                var legacy = files.Read(Path.Combine(target, ".ai/sev.json"));
+                return legacy == null ? null : Data.Parse(Data.Decode(legacy));
+            }
+            var config = Data.Parse(Data.Decode(value));
+            var connection = files.Read(Path.Combine(target, ".ai/rev.json"));
+            if (connection != null) config["connection"] = Data.Parse(Data.Decode(connection));
+            return config;
         }
         public bool Healthy(Dictionary<string, object> config, Snapshot snapshot)
         {
@@ -249,49 +264,70 @@ namespace StarterManager
             {
                 if (config == null || Data.Text(config, "version") != snapshot.Version) return false;
                 var deployment = Data.Text(config, "deployment");
-                if (String.IsNullOrEmpty(deployment) || !files.DirectoryPresent(deployment)) return false;
-                var expected = new Dictionary<string, string> {
-                    { "python", "venv/Scripts/python.exe" }, { "service", "sev_service.py" },
-                    { "state", "service.json" }, { "runner", "runner/run.py" }, { "project_runner", "runner/project.py" } };
-                foreach (var pair in expected)
+                if (String.IsNullOrEmpty(deployment) || !Path.IsPathRooted(deployment) || !files.DirectoryPresent(deployment)) return false;
+                foreach (var pair in new Dictionary<string, string> { { "runner", "assets/runner/run.py" }, { "project_runner", "assets/runner/project.py" } })
                 {
-                    string path = Data.Text(config, pair.Key);
-                    if (path == null || !Path.IsPathRooted(path) || !String.Equals(Path.GetFullPath(path),
-                        Path.GetFullPath(Path.Combine(deployment, pair.Value)), StringComparison.OrdinalIgnoreCase) || !files.FilePresent(path)) return false;
+                    var path = Data.Text(config, pair.Key);
+                    if (path == null || !Path.IsPathRooted(path) || !String.Equals(Path.GetFullPath(path), Path.GetFullPath(Path.Combine(deployment, pair.Value)), StringComparison.OrdinalIgnoreCase) || !files.FilePresent(path)) return false;
                 }
-                string skills = Data.Text(config, "skills");
-                if (skills == null || !files.DirectoryPresent(skills)) return false;
-                // Check all immutable service/runner sources, not Python/venv/model binary integrity.
+                var python = Data.Text(config, "python");
+                if (python == null || !Path.IsPathRooted(python) || !files.FilePresent(python)) return false;
+                object raw; var connection = config.TryGetValue("connection", out raw) ? raw as Dictionary<string, object> : null;
+                if (connection == null || connection.Count != 6 || !(connection["contract_version"] is int) || (int)connection["contract_version"] != 1 || Data.Text(connection, "runtime_version") != snapshot.Version || String.IsNullOrWhiteSpace(Data.Text(connection, "runtime_id"))) return false;
+                if (!Regex.IsMatch(Data.Text(connection, "token_env") ?? "", "^[A-Z][A-Z0-9_]*$")) return false;
+                if (!Regex.IsMatch(Data.Text(connection, "endpoint") ?? "", @"^http://(127\.0\.0\.1|\[::1\]):[0-9]+/?$")) return false;
+                Uri endpoint;
+                if (!Uri.TryCreate(Data.Text(connection, "endpoint"), UriKind.Absolute, out endpoint) || endpoint.Scheme != "http" || (endpoint.Host != "127.0.0.1" && endpoint.Host != "[::1]") || endpoint.Port < 1 || endpoint.Port > 65535 || endpoint.UserInfo != "" || endpoint.Query != "" || endpoint.Fragment != "" || endpoint.AbsolutePath != "/") return false;
+                string lockHash;
+                if (!snapshot.Hashes.TryGetValue("universal-ai-starter/contracts/upstream.lock.json", out lockHash) || Data.Text(connection, "lock_sha256") != lockHash) return false;
                 foreach (var hash in snapshot.Hashes)
                 {
-                    string relative = null;
-                    const string sev = "universal-ai-starter/assets/sev/", runner = "universal-ai-starter/assets/runner/";
-                    if (hash.Key.StartsWith(sev, StringComparison.Ordinal)) relative = hash.Key.Substring(sev.Length);
-                    if (hash.Key.StartsWith(runner, StringComparison.Ordinal)) relative = "runner/" + hash.Key.Substring(runner.Length);
-                    if (relative != null && Data.Hash(files.Read(Path.Combine(deployment, relative))) != hash.Value) return false;
+                    string relative = hash.Key.Substring("universal-ai-starter/".Length);
+                    if (Data.Hash(files.Read(Path.Combine(deployment, relative))) != hash.Value) return false;
                 }
-                if (Data.Hash(files.Read(Path.Combine(deployment, "runtime_safety.py"))) != snapshot.Hashes["universal-ai-starter/assets/runner/runtime_safety.py"]) return false;
-                var state = Data.Parse(Data.Decode(files.Read(Data.Text(config, "state"))));
-                object port, pid;
-                if (!state.TryGetValue("port", out port) || !(port is int) || (int)port < 1 || (int)port > 65535 ||
-                    !state.TryGetValue("pid", out pid) || !(pid is int) || (int)pid < 1 || String.IsNullOrEmpty(Data.Text(state, "token"))) return false;
+                // Static source/connection integrity only; no authenticated inference/readiness claim.
                 return true;
             }
             catch (Exception e)
             {
-                if (e is IOException || e is ArgumentException || e is ManagerException || e is UnauthorizedAccessException) return false;
+                if (e is IOException || e is ArgumentException || e is ManagerException || e is UnauthorizedAccessException || e is KeyNotFoundException) return false;
                 throw;
             }
         }
+        public Dictionary<string, object> SourceConfig(string target)
+        {
+            var bytes = files.Read(Path.Combine(target, ".ai/source-install.json"));
+            return bytes == null ? null : Data.Parse(Data.Decode(bytes));
+        }
         public Decision Decide(string target, Snapshot snapshot)
         {
-            var config = Config(target);
-            if (config == null) return Decision.Missing;
-            var installed = Data.Version(Data.Text(config, "version")); var available = Data.Version(snapshot.Version);
-            if (installed > available) return Decision.Newer; // Even a broken newer runtime must never be downgraded.
-            if (installed < available) return Decision.Update;
-            return Healthy(config, snapshot) ? Decision.Current : Decision.Repair;
+            var config = SourceConfig(target);
+            if (config == null) {
+                if (files.DirectoryPresent(Path.Combine(target,".ai/starter-source"))) throw new ManagerException("영수증 없는 관리 소스입니다. 개별 검토가 필요합니다.");
+                return Decision.Missing;
+            }
+            var installed = Data.Version(Data.Text(config,"version"));
+            if (installed > Data.Version(snapshot.Version)) return Decision.Newer;
+            object raw; var hashes = config.TryGetValue("sha256",out raw) ? raw as Dictionary<string,object> : null;
+            if (hashes == null || hashes.Count == 0 || hashes.Count > 257 || !config.ContainsKey("schema") || !Object.Equals(config["schema"],1)) throw new ManagerException("소스 영수증을 확인할 수 없습니다.");
+            foreach (var pair in hashes) {
+                if (!Transaction.SourcePath(pair.Key) || !(pair.Value is string) || !Regex.IsMatch((string)pair.Value,"^[0-9a-f]{64}$") ||
+                    Data.Hash(files.Read(Path.Combine(target,pair.Key))) != (string)pair.Value) throw new ManagerException("관리 소스가 수정되거나 없습니다. 개별 검토 후 업데이트하세요.");
+            }
+            var actual = files.Files(Path.Combine(target,".ai/starter-source")).Select(p => p.Substring(target.Length+1).Replace('\\','/'));
+            if (!new HashSet<string>(actual,StringComparer.Ordinal).SetEquals(hashes.Keys)) throw new ManagerException("알 수 없는 관리 소스 파일이 있습니다. 검토가 필요합니다.");
+            if (!hashes.ContainsKey(".ai/starter-source/release.json")) throw new ManagerException("소스 release metadata가 없습니다.");
+            var release=Data.Parse(Data.Decode(files.Read(Path.Combine(target,".ai/starter-source/release.json"))));
+            object releaseRaw; var releaseHashes=release.TryGetValue("sha256",out releaseRaw) ? releaseRaw as Dictionary<string,object> : null;
+            if (releaseHashes==null || releaseHashes.Count!=hashes.Count-1 || Data.Text(release,"version")!=Data.Text(config,"version") ||
+                releaseHashes.Any(p=>!p.Key.StartsWith("universal-ai-starter/",StringComparison.Ordinal) || !hashes.ContainsKey(".ai/starter-source/"+p.Key.Substring("universal-ai-starter/".Length)) || !Object.Equals(hashes[".ai/starter-source/"+p.Key.Substring("universal-ai-starter/".Length)],p.Value)))
+                throw new ManagerException("소스 영수증과 release metadata가 다릅니다.");
+            var expected = snapshot.Hashes.ToDictionary(p => ".ai/starter-source/"+p.Key.Substring("universal-ai-starter/".Length), p => p.Value);
+            if (hashes.Keys.Any(k => k != ".ai/starter-source/release.json" && !expected.ContainsKey(k))) throw new ManagerException("삭제된 관리 소스 경로를 검토해야 합니다.");
+            bool same = installed == Data.Version(snapshot.Version) && expected.All(p => hashes.ContainsKey(p.Key) && Object.Equals(hashes[p.Key],p.Value));
+            return same ? Decision.Current : Decision.Update;
         }
+
     }
 
     // Separate manager locks never overlap the installer's shared-runtime byte lock.
@@ -325,30 +361,36 @@ namespace StarterManager
     }
     public sealed class Transaction
     {
-        public static readonly string[] CoreFiles = { "AGENTS.md", ".gitignore", "PROJECT.md", "README.md", ".ai/config.yaml", ".ai/models.yaml", ".ai/routing.yaml", ".ai/verification.yaml", ".ai/sev.json" };
+        public static readonly string[] CoreFiles = { "AGENTS.md", ".gitignore", "PROJECT.md", "README.md", ".ai/config.yaml", ".ai/models.yaml", ".ai/routing.yaml", ".ai/verification.yaml", ".ai/source-install.json" };
+        public static bool SourcePath(string name) {
+            return name != null && name.StartsWith(".ai/starter-source/",StringComparison.Ordinal) &&
+                Regex.IsMatch(name,@"^[a-zA-Z0-9_./-]+$") && !name.Split('/').Any(p => p == "" || p == "." || p == ".." || p.EndsWith(".") || Regex.IsMatch(p,@"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)",RegexOptions.IgnoreCase));
+        }
+        readonly string[] managed;
         readonly FileStore files; readonly string target, root, journalPath;
         Journal journal;
         public string Stage { get { return Path.Combine(root, "stage"); } }
         public string Work { get { return root; } }
-        public Transaction(FileStore files, string target)
+        public Transaction(FileStore files, string target, Snapshot snapshot = null)
         {
             this.files = files; this.target = target;
+            managed = snapshot == null ? CoreFiles : CoreFiles.Concat(snapshot.Hashes.Keys.Select(k => ".ai/starter-source/"+k.Substring("universal-ai-starter/".Length))).Concat(new[]{".ai/starter-source/release.json"}).ToArray();
             root = Path.GetFullPath(Path.Combine(target, ".ai/starter-manager")); journalPath = Path.Combine(root, "journal.json");
         }
         void Save()
         {
             var bytes = Data.Utf8(Data.Json(journal));
-            if (bytes.Length > 1900000) throw new ManagerException("복구 기록의 안전한 크기 제한을 초과했습니다.");
+            if (bytes.Length > 16 * 1024 * 1024) throw new ManagerException("복구 기록의 안전한 크기 제한을 초과했습니다.");
             files.Write(journalPath, ProtectedData.Protect(bytes, Data.Utf8(target), DataProtectionScope.CurrentUser));
         }
         public bool Recover()
         {
             var bytes = files.Read(journalPath); if (bytes == null) return false;
-            try { journal = new JavaScriptSerializer().Deserialize<Journal>(Data.Decode(ProtectedData.Unprotect(bytes, Data.Utf8(target), DataProtectionScope.CurrentUser))); }
+            try { journal = new JavaScriptSerializer { MaxJsonLength=16*1024*1024 }.Deserialize<Journal>(Data.Decode(ProtectedData.Unprotect(bytes, Data.Utf8(target), DataProtectionScope.CurrentUser))); }
             catch { throw new ManagerException("복구 journal을 읽을 수 없습니다. 파일을 보존했습니다. 수동 점검이 필요합니다."); }
-            if (journal == null || journal.Schema != 1 || journal.Target != target || journal.Entries == null || journal.Entries.Count > CoreFiles.Length ||
+            if (journal == null || journal.Schema != 1 || journal.Target != target || journal.Entries == null || journal.Entries.Count > 520 ||
                 journal.Entries.Select(e => e.Relative).Distinct(StringComparer.OrdinalIgnoreCase).Count() != journal.Entries.Count ||
-                journal.Entries.Any(e => !CoreFiles.Contains(e.Relative))) throw new ManagerException("복구 journal 경계가 올바르지 않습니다. 수동 점검이 필요합니다.");
+                journal.Entries.Any(e => !CoreFiles.Contains(e.Relative) && !SourcePath(e.Relative))) throw new ManagerException("복구 journal 경계가 올바르지 않습니다. 수동 점검이 필요합니다.");
             if (journal.Phase == "committed" || journal.Phase == "rolledback") { Clean(); return true; }
             if (journal.Phase != "prepared" && journal.Phase != "installing" && journal.Phase != "publishing")
                 throw new ManagerException("불확실한 복구 단계입니다. 수동 점검이 필요합니다.");
@@ -371,7 +413,11 @@ namespace StarterManager
                 // Recheck immediately before replacing, including after an earlier interrupted recovery.
                 if (Data.Hash(files.Read(path)) == HashEncoded(entry.Before)) continue;
                 if (Data.Hash(files.Read(path)) != HashEncoded(entry.After)) throw new ManagerException("복구 중 파일이 변경되었습니다. 수동 점검이 필요합니다.");
-                if (entry.Before == null) files.Delete(path); else files.Write(path, Convert.FromBase64String(entry.Before));
+                if (entry.Before == null) {
+                    files.Delete(path);
+                    var dir=Path.GetDirectoryName(path);
+                    while(dir != target) { files.DeleteEmptyDirectory(dir); dir=Path.GetDirectoryName(dir); }
+                } else files.Write(path, Convert.FromBase64String(entry.Before));
             }
             journal.Phase = "rolledback"; Save(); Clean(); return true;
         }
@@ -387,14 +433,14 @@ namespace StarterManager
             else if (Data.Decode(ignored) != "*\n") throw new ManagerException("관리기 전용 폴더에 사용자 파일이 있습니다. 설치하지 않았습니다.");
             files.MakeDirectory(Stage);
             journal = new Journal { Schema = 1, Target = target, Phase = "prepared", Entries = new List<JournalEntry>() };
-            foreach (var name in CoreFiles)
+            foreach (var name in managed)
             {
                 var bytes = files.Read(Path.Combine(target, name));
                 journal.Entries.Add(new JournalEntry { Relative = name, Before = bytes == null ? null : Convert.ToBase64String(bytes) });
             }
             Save();
             foreach (var entry in journal.Entries)
-                if (entry.Before != null && entry.Relative != ".ai/sev.json") files.Write(Path.Combine(Stage, entry.Relative), Convert.FromBase64String(entry.Before));
+                if (entry.Before != null) files.Write(Path.Combine(Stage, entry.Relative), Convert.FromBase64String(entry.Before));
         }
         public void Installing() { journal.Phase = "installing"; Save(); }
         public void Uncertain() { journal.Phase = "uncertain"; Save(); }
@@ -406,10 +452,8 @@ namespace StarterManager
                 var bytes = files.Read(Path.Combine(Stage, entry.Relative));
                 if (bytes == null) throw new ManagerException("설치된 프로젝트 파일이 불완전합니다.");
                 entry.After = Convert.ToBase64String(bytes);
-                if (entry.Before != null && entry.Relative != "AGENTS.md" && entry.Relative != ".gitignore" && entry.Relative != ".ai/sev.json" && entry.Before != entry.After)
-                    throw new ManagerException("설치기가 기존 프로젝트 설정을 변경했습니다. 반영하지 않았습니다.");
-                if (entry.Before != null && (entry.Relative == "AGENTS.md" || entry.Relative == ".gitignore"))
-                    AssertManagedMerge(Data.Decode(Convert.FromBase64String(entry.Before)), Data.Decode(bytes), entry.Relative);
+                if (entry.Before != null && !SourcePath(entry.Relative) && entry.Relative != ".ai/source-install.json" && entry.Before != entry.After)
+                    throw new ManagerException("설치기가 기존 프로젝트 지침·설정을 변경했습니다. 반영하지 않았습니다.");
             }
             guard();
             foreach (var entry in journal.Entries)
@@ -447,6 +491,10 @@ namespace StarterManager
                 var path = Path.Combine(Stage, entry.Relative);
                 if (files.Read(path) != null) files.Delete(path);
             }
+            foreach (var entry in journal.Entries) {
+                var dir = Path.GetDirectoryName(Path.Combine(Stage,entry.Relative));
+                while (dir != Stage && dir.StartsWith(Stage+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)) { files.DeleteEmptyDirectory(dir); dir=Path.GetDirectoryName(dir); }
+            }
             foreach (var leaf in new[] { "installer.ps1", "result.json" }) files.Delete(Path.Combine(root, leaf));
             files.Delete(Path.Combine(Stage, ".ai/installation.lock"));
             // Remove only empty directories; unknown files are retained for inspection.
@@ -472,6 +520,7 @@ namespace StarterManager
             using (new ByteLease(files, Path.Combine(sharedLocks, "manager.lock")))
             using (new ByteLease(files, Path.Combine(target, ".ai/installation.lock")))
             using (new ByteLease(files, Path.Combine(target, ".ai/project-workflow/lock")))
+            using (new ByteLease(files, Path.Combine(target, ".ai/rev-workflow/lock")))
             using (files.GuardSettings(target))
             {
                 activity.AssertIdle(target);
@@ -481,59 +530,39 @@ namespace StarterManager
                 cancel.ThrowIfCancellationRequested();
                 report(Phase.Checking, "최신 배포 정보를 확인합니다.", true);
                 var snapshot = Snapshot.Fetch(network, cancel);
+                foreach(var key in snapshot.Hashes.Keys) {
+                    string stagePath=Path.Combine(target,".ai/starter-manager/stage/.ai/starter-source/"+key.Substring("universal-ai-starter/".Length));
+                    if ((stagePath+".manager-"+new string('0',32)).Length>=260) throw new ManagerException("관리 소스 staging 경로가 너무 깁니다. 더 짧은 프로젝트 경로를 선택하세요.");
+                }
                 var inspector = new RuntimeInspector(files);
                 var decision = inspector.Decide(target, snapshot);
                 if (decision == Decision.Current || decision == Decision.Newer)
                 {
-                    string message = decision == Decision.Current ? "같은 버전의 정상 runtime입니다. 설치를 건너뛰었습니다." : "더 높은 버전이 연결되어 있습니다. downgrade하지 않습니다. 손상 시 해당 버전 관리기로 복구해 주세요.";
+                    string message = decision == Decision.Current ? "starter 최신 상태입니다. Rev 준비는 별도 확인이 필요합니다. 실제 추론은 확인하지 않았습니다." : "더 높은 버전이 연결되어 있습니다. downgrade하지 않습니다. 손상 시 해당 버전 관리기로 복구해 주세요.";
                     report(Phase.Complete, message, false);
-                    return new Result { Decision = decision, Version = Data.Text(inspector.Config(target), "version"), Changed = false, Message = message };
+                    return new Result { Decision = decision, Version = snapshot.Version, Changed = false, Message = message };
                 }
-                report(Phase.Downloading, "검증된 commit의 설치기를 받습니다.", true);
-                var script = network.Get(snapshot.BaseUrl + "/scripts/install_from_github.ps1", 1024 * 1024, cancel);
-                snapshot.InstallerHash = Data.Hash(script);
-                cancel.ThrowIfCancellationRequested(); activity.AssertIdle(target);
-                report(Phase.Preparing, "프로젝트 연결을 백업하고 격리된 설치를 준비합니다.", false);
-                try
-                {
-                    transaction.Prepare();
-                    files.Write(Path.Combine(transaction.Work, "installer.ps1"), script);
-                    // The public installer can take its existing-core fast path when AGENTS/models
-                    // exist. Fill other missing core files from the same authenticated hash list first.
-                    foreach (var name in Transaction.CoreFiles.Where(n => n != ".ai/sev.json"))
-                    {
-                        var path = Path.Combine(transaction.Stage, name);
-                        if (files.Read(path) != null) continue;
-                        string relative = "universal-ai-starter/assets/starter/" + name, expected;
-                        if (!snapshot.Hashes.TryGetValue(relative, out expected)) throw new ManagerException("누락 core 파일의 배포 해시가 없습니다.");
-                        var template = network.Get(snapshot.BaseUrl + "/distribution/releases/0.3.3/" + relative, 1024 * 1024, CancellationToken.None);
-                        if (Data.Hash(template) != expected) throw new ManagerException("core 템플릿 해시가 다릅니다. 프로젝트를 변경하지 않았습니다.");
-                        files.Write(path, template);
-                    }
-                    transaction.Installing();
-                    report(Phase.Installing, "runtime 설치 중입니다. 안전한 완료를 기다립니다. 창닫기·취소는 완료 후 처리됩니다.", false);
-                    installer.Install(Path.Combine(transaction.Work, "installer.ps1"), transaction.Stage, snapshot, transaction.Work);
-                    if (!inspector.Healthy(inspector.Config(transaction.Stage), snapshot)) throw new ManagerException("설치 후 runtime 경로·버전·해시 검증에 실패했습니다.");
-                    report(Phase.Publishing, "검증된 연결과 관리 파일을 반영합니다.", false);
-                    transaction.Publish(() => activity.AssertIdle(target));
-                    if (!inspector.Healthy(inspector.Config(target), snapshot)) throw new ManagerException("프로젝트 연결의 최종 검증에 실패했습니다.");
+                report(Phase.Downloading,"고정 snapshot의 설치기를 검증합니다.",true);
+                var script = network.Get(snapshot.BaseUrl+"/scripts/install_from_github.ps1", 1024*1024,cancel);
+                if (Data.Hash(script) != snapshot.InstallerHash) throw new ManagerException("고정 설치기 해시 불일치입니다.");
+                transaction = new Transaction(files,target,snapshot);
+                transaction.Prepare();
+                try {
+                    string scriptPath=Path.Combine(transaction.Work,"installer.ps1"); files.Write(scriptPath,script);
+                    cancel.ThrowIfCancellationRequested(); transaction.Installing();
+                    report(Phase.Installing,"격리 공간에 starter 소스·클라이언트를 설치합니다.",false);
+                    installer.Install(scriptPath,transaction.Stage,snapshot,transaction.Work);
+                    if (inspector.Decide(transaction.Stage,snapshot) != Decision.Current) throw new ManagerException("설치 후 소스 무결성 검증 실패입니다.");
+                    cancel.ThrowIfCancellationRequested();
+                    report(Phase.Publishing,"검증된 소스를 안전하게 반영합니다.",false);
+                    transaction.Publish(()=> { cancel.ThrowIfCancellationRequested(); activity.AssertIdle(target); });
+                    if (inspector.Decide(target,snapshot)!=Decision.Current) throw new ManagerException("반영 후 소스 무결성 확인 실패입니다.");
                     transaction.Commit();
-                    report(Phase.Complete, "스타터팩 설치 및 연결 확인을 완료했습니다.", false);
-                    return new Result { Decision = decision, Version = snapshot.Version, Changed = true, Message = "스타터팩 설치 및 연결 확인을 완료했습니다." };
-                }
-                catch (ProcessUncertainException)
-                {
-                    transaction.Uncertain();
-                    report(Phase.Error, "설치 프로세스 종료 상태가 불확실합니다. 프로젝트 연결은 반영하지 않았습니다. 수동 점검이 필요합니다.", false);
-                    throw;
-                }
-                catch
-                {
-                    report(Phase.Recovering, "실패한 작업의 프로젝트 변경을 복구합니다.", false);
-                    transaction.Recover();
-                    report(Phase.Error, "설치를 완료하지 못했습니다. 기존 연결을 보존했습니다. 준비사항 확인 후 다시 시도해 주세요.", false);
-                    throw;
-                }
+                } catch (ProcessUncertainException) { transaction.Uncertain(); throw; }
+                catch { transaction.Recover(); throw; }
+                string installedMessage="starter 설치·업데이트 완료. Rev 준비가 필요합니다. 기존 실행 연결과 완료 기록은 보존했습니다.";
+                report(Phase.Complete,installedMessage,false);
+                return new Result { Decision=decision,Version=snapshot.Version,Changed=true,Message=installedMessage };
             }
         }
     }

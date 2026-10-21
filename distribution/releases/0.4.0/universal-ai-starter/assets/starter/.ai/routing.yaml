@@ -1,0 +1,4 @@
+selection: rev
+backend: codex_cli
+automatic_recovery: false
+parallel_agents: false

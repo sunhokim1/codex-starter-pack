@@ -44,6 +44,12 @@ def _source(root: Path, rel: PurePosixPath) -> Path:
 
 
 def _version(root: Path) -> str:
+    manifest = json.loads((root / MANIFEST_PATH).read_text(encoding="utf-8"))
+    if 'version' in manifest:
+        version = manifest['version']
+        if not isinstance(version, str) or not re.fullmatch(r'[0-9]+(?:\.[0-9]+)+', version):
+            raise PackageError('invalid distribution version')
+        return version
     text = _source(root, PurePosixPath(CONFIG_PATH.as_posix())).read_text(encoding="utf-8")
     in_starter = False
     for line in text.splitlines():
@@ -103,6 +109,12 @@ def _validate_output(output: Path, root: Path, sources: dict[str, Path]) -> Path
         _source(root, PurePosixPath(CONFIG_PATH.as_posix())),
     ]
     output_abs = output.resolve()
+    if output_abs == (root / 'universal-ai-starter.zip').resolve() and _version(root) == '0.4.0':
+        raise PackageError('archived root ZIP is immutable; use versioned 0.4.0 output')
+    if output_abs.is_relative_to((root / 'distribution/releases').resolve()) and not output_abs.is_relative_to((root / 'distribution/releases/0.4.0').resolve()):
+        raise PackageError('archived releases are immutable')
+    if output_abs.is_relative_to((root / 'distribution/releases/0.4.0/universal-ai-starter').resolve()):
+        raise PackageError('output must not be inside canonical bundle sources')
     if any(output_abs == source.resolve() for source in protected):
         raise PackageError("output path would overwrite a package source or configuration file")
     return output_abs
@@ -155,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="validate package inputs without writing")
     args = parser.parse_args(argv)
     root = (args.root or Path(__file__).resolve().parent.parent).resolve()
-    output = args.output or root / f"{ARCHIVE_NAME}.zip"
+    output = args.output or root / "distribution/releases/0.4.0" / f"{ARCHIVE_NAME}.zip"
     try:
         manifest, sources = _load(root)
         _version(root)

@@ -1,0 +1,80 @@
+"""Copy the bundled starter with complete conflict preflight and no overwrites."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import sys
+import subprocess
+from install_rev import verify_bundle, source_install, source_locks
+from runner.runtime_safety import reject_links
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--target', required=True)
+    parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--adopt', action='store_true', help='preserve existing regular core files; copy missing files only')
+    parser.add_argument('--files-only', action='store_true', help='copy/merge files without installing Rev')
+    parser.add_argument('--no-autostart', action='store_true', help='do not register Windows sign-in startup')
+    args = parser.parse_args()
+    source = Path(__file__).resolve().parents[1] / 'assets' / 'starter'
+    try:
+        target = reject_links(Path(args.target).expanduser()).resolve()
+        verify_bundle(source.parents[1])
+    except (OSError, ValueError) as error:
+        print('ERROR: invalid bundle or target: ' + str(error), file=sys.stderr)
+        return 2
+    files = sorted(p for p in source.rglob('*') if p.is_file())
+    if not files:
+        print('ERROR: template is empty.', file=sys.stderr)
+        return 2
+    # Use the release manifest rather than a fixed file count.
+    release = source.parents[1] / 'release.json'
+    try:
+        hashes = json.loads(release.read_text(encoding='utf-8'))['sha256']
+        expected = {}
+        for name, digest in hashes.items():
+            parts = name.split('/')
+            if parts[1:3] == ['assets', 'starter']:
+                expected['/'.join(parts[3:])] = digest
+        actual = {p.relative_to(source).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
+        if not expected or actual != expected:
+            raise ValueError('template files do not match release metadata')
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        print(f'ERROR: invalid template release: {error}', file=sys.stderr)
+        return 2
+    if target.exists() and not target.is_dir():
+        print('ERROR: target is not a directory.', file=sys.stderr)
+        return 2
+    conflicts = []
+    for original in files:
+        dest = target / original.relative_to(source)
+        if dest.exists() or dest.is_symlink():
+            if not (args.adopt and dest.is_file() and not dest.is_symlink()):
+                conflicts.append(str(dest))
+        parent = dest.parent
+        while parent != target:
+            if parent.is_symlink() or (parent.exists() and (not parent.is_dir() or
+                    getattr(parent.lstat(), 'st_file_attributes', 0) & 0x400)):
+                conflicts.append(str(parent))
+            parent = parent.parent
+        if not dest.resolve().is_relative_to(target):
+            conflicts.append(str(dest))
+    if conflicts:
+        print('ERROR: conflicts detected; no files written:', file=sys.stderr)
+        for path in sorted(set(conflicts)):
+            print(path, file=sys.stderr)
+        return 2
+    if args.dry_run:
+        count=sum(not (target/p.relative_to(source)).exists() for p in files)
+        print(f'OK: would create {count} files in {target}')
+        return 0
+    target.mkdir(parents=True, exist_ok=True)
+    with source_locks(target):
+        result = source_install(source.parents[1], target)
+    print(json.dumps(result, ensure_ascii=True))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

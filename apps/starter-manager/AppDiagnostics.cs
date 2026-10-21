@@ -37,7 +37,7 @@ namespace StarterManager
                 if (Cancelable) cancel.ThrowIfCancellationRequested();
                 if (Unexpected) throw new IOException("fixture-secret-do-not-display");
                 if (Fail) throw new ManagerException("격리된 오류입니다. 다시 확인해 주세요.");
-                return new Result { Decision = Decision.Current, Version = "0.3.3", Message = "격리된 확인을 완료했습니다." };
+                return new Result { Decision = Decision.Current, Version = "0.4.0", Message = "격리된 확인을 완료했습니다." };
             }
             public void Dispose() { Release.Dispose(); Entered.Dispose(); }
         }
@@ -101,7 +101,7 @@ namespace StarterManager
                 form.RequestStop(false); Pump(() => !form.Busy);
                 Assert(form.StatusText == "취소 완료" && form.TargetChangeEnabled, "취소 후 대기");
                 op.Release.Set(); form.StartCheck(); Pump(() => !form.Busy);
-                Assert(op.Calls == 2 && form.StatusText == "완료 · 스타터팩 0.3.3", "재시도 완료: " + form.StatusText);
+                Assert(op.Calls == 2 && form.StatusText == "완료 · 스타터팩 0.4.0", "재시도 완료: " + form.StatusText);
                 form.Close();
             }
             // Each irreversible phase must keep the real Form alive until its worker finishes.

@@ -10,7 +10,8 @@ import unittest
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-POWERSHELL = shutil.which('pwsh') or shutil.which('powershell.exe')
+PS7 = Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'PowerShell/7/pwsh.exe'
+POWERSHELL = shutil.which('pwsh') or (str(PS7) if PS7.is_file() else shutil.which('powershell.exe'))
 CSC = Path(os.environ.get('WINDIR', 'C:/Windows')) / 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 
 
@@ -72,8 +73,8 @@ class StarterManagerTests(unittest.TestCase):
             capture_output=True, timeout=30)
         self.assertEqual(result.returncode, 0, repr(result.stdout) + repr(result.stderr))
         manifest = json.loads((output / 'artifacts.json').read_text(encoding='utf-8'))
-        self.assertEqual(manifest['appVersion'], '0.1.0')
-        archive_path = output / 'CodexStarterManager-0.1.0-win.zip'
+        self.assertEqual(manifest['appVersion'], '0.2.0')
+        archive_path = output / 'CodexStarterManager-0.2.0-win.zip'
         self.assertEqual(manifest['archive'], archive_path.name)
         self.assertEqual(hashlib.sha256(archive_path.read_bytes()).hexdigest(), manifest['archiveSha256'])
         with zipfile.ZipFile(archive_path) as archive:

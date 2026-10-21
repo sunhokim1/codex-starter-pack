@@ -1,0 +1,6 @@
+commands:
+  test: null
+  lint: null
+  typecheck: null
+  build: null
+  acceptance: null

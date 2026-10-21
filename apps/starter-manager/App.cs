@@ -7,8 +7,8 @@ using System.Windows.Forms;
 using System.Drawing;
 
 [assembly: AssemblyTitle("Codex Starter 관리자")]
-[assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.0")]
+[assembly: AssemblyVersion("0.2.0.0")]
+[assembly: AssemblyFileVersion("0.2.0.0")]
 
 namespace StarterManager
 {
@@ -89,7 +89,7 @@ namespace StarterManager
         public ManagerForm(AppSettings settings, Func<IManagerOperation> operation, bool automatic)
         {
             this.settings = settings; this.operation = operation; this.automatic = automatic;
-            Text = "Codex Starter 관리자 · 앱 0.1.0";
+            Text = "Codex Starter 관리자 · 앱 0.2.0";
             Font = new Font("Malgun Gothic", 10F);
             AutoScaleMode = AutoScaleMode.Dpi;
             ClientSize = new Size(780, 620); MinimumSize = new Size(720, 620);
@@ -98,12 +98,12 @@ namespace StarterManager
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             foreach (int height in new[] { 40, 56, 42, 72, 24, 132, 48 }) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, height));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            var title = new Label { Text = "프로젝트 스타터팩 자동 관리", Font = new Font(Font.FontFamily, 16F, FontStyle.Bold), Dock = DockStyle.Fill };
+            var title = new Label { Text = "프로젝트 starter 설치·업데이트", Font = new Font(Font.FontFamily, 16F, FontStyle.Bold), Dock = DockStyle.Fill };
             targetLabel.Dock = DockStyle.Fill; targetLabel.AutoEllipsis = true;
             stateLabel.Dock = DockStyle.Fill; stateLabel.Font = new Font(Font, FontStyle.Bold);
             detailLabel.Dock = DockStyle.Fill; detailLabel.AutoEllipsis = true;
             bar.Dock = DockStyle.Fill; bar.Style = ProgressBarStyle.Blocks;
-            var preparation = new Label { Dock = DockStyle.Fill, Padding = new Padding(0, 10, 0, 0), Text = "준비사항: Python 3.11 이상, 네이티브 Codex CLI 설치·로그인 및 네이티브 샌드박스 준비가 필요합니다.\r\n빈 폴더와 기존 프로젝트를 지원합니다. 설치 중에는 개발 작업과 파일 편집을 멈춰 주세요.\r\n선택한 프로젝트의 연결만 처리합니다. 권한·인증·자동시작을 자동 변경하지 않습니다." };
+            var preparation = new Label { Dock = DockStyle.Fill, Padding = new Padding(0, 10, 0, 0), Text = "Python 3.11 이상으로 starter 소스·클라이언트를 자동 설치·업데이트합니다.\r\n기존 지침·설정·실행 연결·완료 기록을 보존합니다.\r\nRev 환경·모델·서비스 준비와 실제 추론은 별도 명시 작업입니다." };
             var actions = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
             change.Text = "폴더 선택 / 변경"; retry.Text = "다시 확인"; stop.Text = "취소";
             foreach (var button in new[] { change, retry, stop }) { button.AutoSize = true; button.Height = 34; actions.Controls.Add(button); }
@@ -116,7 +116,7 @@ namespace StarterManager
             FormClosing += delegate(object sender, FormClosingEventArgs e) { if (busy) { e.Cancel = true; RequestStop(true); } };
             string notice; target = settings.Load(out notice);
             targetLabel.Text = target == null ? "프로젝트 폴더: 선택하지 않음" : "프로젝트 폴더: " + target;
-            stateLabel.Text = "대기 중"; detailLabel.Text = notice ?? "폴더를 선택하면 최신 버전을 확인하고 필요한 설치·업데이트를 자동 진행합니다.";
+            stateLabel.Text = "대기 중"; detailLabel.Text = notice ?? "폴더를 선택하면 starter 소스·클라이언트를 자동 설치·업데이트합니다. Rev 준비는 별도입니다.";
             SetButtons();
             Shown += delegate { if (this.automatic) { if (target == null) SelectFolder(); else StartCheck(); } };
         }
@@ -146,7 +146,7 @@ namespace StarterManager
                 case Phase.Downloading: return "설치 파일 다운로드 중";
                 case Phase.Preparing: return "백업 및 설치 준비 중";
                 case Phase.Installing: return "스타터팩 설치 중";
-                case Phase.Publishing: return "프로젝트 연결 검증·반영 중";
+                case Phase.Publishing: return "스타터 소스 검증·반영 중";
                 case Phase.Recovering: return "복구 상태 확인 중";
                 case Phase.Complete: return "완료";
                 default: return "오류";

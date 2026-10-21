@@ -1,0 +1,11 @@
+.ai/rev.json
+.ai/rev-install.json
+.ai/rev-workflow/
+.ai/reports/
+.ai/sev.json
+.ai/installation.lock
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc

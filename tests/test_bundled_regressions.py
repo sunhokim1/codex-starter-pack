@@ -6,7 +6,7 @@ import unittest
 
 
 class BundledRegressionTests(unittest.TestCase):
-    def test_canonical_offline_regressions(self):
+    def test_archived_033_offline_regressions(self):
         root = Path(__file__).resolve().parents[1]
         bundle = root / 'distribution/releases/0.3.3/universal-ai-starter'
         # A separate interpreter keeps the bundle's same-named imports isolated.

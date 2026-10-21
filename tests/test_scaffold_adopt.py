@@ -1,4 +1,7 @@
 import hashlib
+import sys
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]/"distribution/releases/0.3.3/universal-ai-starter/assets/runner"))
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]/"distribution/releases/0.3.3/universal-ai-starter/scripts"))
 import importlib.util
 import json
 from pathlib import Path
@@ -6,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-SCRIPT=Path(__file__).resolve().parents[1]/'distribution/skill/scripts/scaffold.py'
+SCRIPT=Path(__file__).resolve().parents[1]/'distribution/releases/0.3.3/universal-ai-starter/scripts/scaffold.py'
 
 
 class ScaffoldAdoptTests(unittest.TestCase):

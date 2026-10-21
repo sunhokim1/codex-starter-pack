@@ -1,0 +1,58 @@
+{
+  "connection": {
+    "contract_version": 1,
+    "runtime_version": "0.4.0",
+    "runtime_id": "isolated-040",
+    "endpoint": "http://127.0.0.1:8000",
+    "token_env": "REV_AUTH_TOKEN",
+    "lock_sha256": "4bc789faa1bda71afd798d59b10122782816f15b40cfac81adde4d381b475fdb"
+  },
+  "models": {
+    "planning_model": "gpt-6.1-sol",
+    "execution_model": null
+  },
+  "state": {
+    "version": 4,
+    "project": "fixture-only",
+    "configuration": {
+      "fixture": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "models": {
+      "planning_model": "gpt-6.1-sol",
+      "execution_model": null
+    },
+    "tasks": [
+      {
+        "id": "first",
+        "status": "pending",
+        "depends_on": [],
+        "execution_model": null
+      }
+    ],
+    "attempts": [],
+    "status": "pending"
+  },
+  "usage": {
+    "phase": "implementation",
+    "status": "failed",
+    "requested_model": "gpt-6-luna",
+    "actual_model": null,
+    "elapsed_seconds": null,
+    "input_tokens": null,
+    "cached_input_tokens": null,
+    "output_tokens": null,
+    "cli_invocations": 1,
+    "backend_requests": null
+  },
+  "evidence": {
+    "name": "test",
+    "command": null,
+    "scope": "final",
+    "status": "unset",
+    "producer": "controller_subprocess",
+    "state_sha256": null,
+    "executed": false,
+    "exit_code": null,
+    "reason": "No project command configured; not passed"
+  }
+}

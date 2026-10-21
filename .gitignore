@@ -14,3 +14,7 @@ experiments/local-model-selector/model/
 .ai/reports/
 .ai/installation.lock
 apps/starter-manager/bin/
+
+.ai/rev.json
+.ai/rev-install.json
+.ai/rev-workflow/

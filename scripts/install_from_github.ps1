@@ -1,20 +1,10 @@
-# Public installer: irm https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/main/scripts/install_from_github.ps1 | iex
-# Saved-file usage: .\install_from_github.ps1 [-Target 'C:\your\project']
+﻿# 0.4.0: 소스 설치·업데이트와 명시적 Rev 연결을 분리합니다.
 [CmdletBinding()]
-param(
-    [Parameter(Position=0)][string]$Target,
-    [switch]$Manager,
-    [string]$SnapshotCommit,
-    [string]$ExpectedVersion
-)
-$starterExitCode = 0
-try {
-& {
-    param([string]$Target, [bool]$Manager, [string]$SnapshotCommit, [string]$ExpectedVersion)
-    $ErrorActionPreference = 'Stop'
-    $ProgressPreference = 'SilentlyContinue'
-    $PSNativeCommandUseErrorActionPreference = $false
-
+param([string]$Target, [string]$BundlePath, [string]$ArchivePath,
+      [string]$RuntimeRoot, [string]$ConnectionFile, [switch]$Migrate,
+      [switch]$FilesOnly, [switch]$Manager, [string]$SnapshotCommit,
+      [string]$ExpectedVersion='0.4.0')
+$ErrorActionPreference='Stop'
     function Assert-StarterPath([string]$Path) {
         $full = [IO.Path]::GetFullPath($Path)
         $current = $full
@@ -67,20 +57,28 @@ try {
     function Assert-StarterUrl([string]$Value) {
         $uri = $null
         if (-not [Uri]::TryCreate($Value, [UriKind]::Absolute, [ref]$uri) -or
-            $uri.Scheme -cne 'https' -or $uri.Host -cne 'raw.githubusercontent.com' -or
+            $uri.Scheme -cne 'https' -or $uri.Host -cnotin @('raw.githubusercontent.com','api.github.com') -or
             $uri.Port -ne 443 -or $uri.UserInfo -or $uri.Query -or $uri.Fragment -or
-            $uri.AbsolutePath -cnotmatch '^/sunhokim1/codex-starter-pack/[0-9a-f]{40}/(universal-ai-starter\.zip|scripts/install_from_github\.ps1|\.ai/config\.yaml|distribution/releases/0\.3\.3/universal-ai-starter/release\.json)$') {
+            (($uri.Host -ceq 'api.github.com' -and $uri.AbsolutePath -cne '/repos/sunhokim1/codex-starter-pack/commits/main') -or ($uri.Host -ceq 'raw.githubusercontent.com' -and $uri.AbsolutePath -cnotmatch '^/sunhokim1/codex-starter-pack/[0-9a-f]{40}/distribution/releases/0\.4\.0/(universal-ai-starter\.zip|universal-ai-starter/release\.json)$'))) {
             throw '허용되지 않은 다운로드 URL입니다.'
         }
         return $uri
     }
 
     function Get-StarterBytes([string]$Url, [int]$Limit) {
+        $null=Assert-StarterUrl $Url
+        for ($attempt=0; $attempt -lt 2; $attempt++) {
+            try { return ,(Receive-StarterBytes $Url $Limit) }
+            catch { if ($attempt -eq 1) { throw } }
+        }
+    }
+    function Receive-StarterBytes([string]$Url, [int]$Limit) {
         $uri = Assert-StarterUrl $Url
         if ($Limit -le 0 -or $Limit -gt 32MB) { throw 'Invalid download limit.' }
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         $request = [Net.HttpWebRequest]::Create($uri)
         $request.AllowAutoRedirect = $false
+        $request.UserAgent = 'Codex-Starter-Installer/0.4.0'
         $request.Timeout = 30000
         $request.ReadWriteTimeout = 30000
         $response = $null
@@ -110,30 +108,17 @@ try {
         }
     }
 
-    function Get-StarterPublicZip {
-        # The ZIP pin is independent of the main snapshot selected by the manager.
-        return ,(Get-StarterBytes 'https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/1f1a8e97e097e457cc1369c26cc652dfb57e15c0/universal-ai-starter.zip' 32MB)
+    function Resolve-StarterCommit {
+        $latest=[Text.Encoding]::UTF8.GetString((Get-StarterBytes 'https://api.github.com/repos/sunhokim1/codex-starter-pack/commits/main' 1MB)) | ConvertFrom-Json
+        if ($latest.sha -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid main commit.' }
+        return $latest.sha
     }
 
     function Get-StarterSnapshot([string]$Commit, [string]$Version) {
-        if ($Commit -cnotmatch '^[0-9a-f]{40}$' -or $Version -cne '0.3.3') {
-            throw '지원하지 않는 snapshot 또는 배포 버전입니다.'
-        }
-        $base = "https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/$Commit"
-        $config = [Text.Encoding]::UTF8.GetString((Get-StarterBytes "$base/.ai/config.yaml" 1MB))
-        # Read only the expected starter block; another section's version must
-        # not satisfy this check. Reject duplicate keys and mismatched quotes.
-        $blocks = [regex]::Matches($config, '(?m)^starter:[ \t]*\r?\n((?:[ \t]+[^\r\n]*(?:\r?\n|$)|\r?\n)*)')
-        if ($blocks.Count -ne 1 -or
-            [regex]::Matches($config, '(?m)^starter:').Count -ne 1 -or
-            [regex]::Matches($blocks[0].Groups[1].Value, '(?m)^  version:').Count -ne 1 -or
-            $blocks[0].Groups[1].Value -cnotmatch '(?m)^  version: *(?<quote>[\x22\x27]?)0\.3\.3\k<quote> *\r?$') {
-            throw 'Snapshot 설정 버전이 일치하지 않습니다.'
-        }
-        $release = [Text.Encoding]::UTF8.GetString((Get-StarterBytes "$base/distribution/releases/0.3.3/universal-ai-starter/release.json" 1MB)) | ConvertFrom-Json
-        if ($release.version -cne $Version -or -not $release.sha256) { throw 'Snapshot release metadata가 올바르지 않습니다.' }
-        # Reject malformed manifests before downloading the ZIP as well as
-        # comparing them with the independent ZIP manifest during extraction.
+        if ($Commit -cnotmatch '^[0-9a-f]{40}$' -or $Version -cne '0.4.0') { throw '지원하지 않는 snapshot 또는 배포 버전입니다.' }
+        $url="https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/$Commit/distribution/releases/0.4.0/universal-ai-starter/release.json"
+        $release=[Text.Encoding]::UTF8.GetString((Get-StarterBytes $url 1MB)) | ConvertFrom-Json
+        if ($release.version -cne $Version -or -not $release.sha256) { throw 'Snapshot metadata mismatch.' }
         Assert-StarterReleaseMatch $release $release
         return $release
     }
@@ -147,42 +132,6 @@ try {
             if ($item.Value -cnotmatch '^[0-9a-f]{64}$' -or
                 $Release.sha256.PSObject.Properties.Name -cnotcontains $item.Name -or
                 $Release.sha256.($item.Name) -cne $item.Value) { throw 'Snapshot/ZIP hash mismatch.' }
-        }
-    }
-
-    function Invoke-StarterManagedBundle([string]$Directory, [string]$Target) {
-        # Never use bootstrap here: it may install Python and register startup.
-        $python = $null
-        foreach ($candidate in @((Join-Path $env:LOCALAPPDATA 'Programs/Python/Python311/python.exe'), 'python.exe')) {
-            $command = Get-Command $candidate -ErrorAction SilentlyContinue
-            if ($command) {
-                & $command.Source -c 'import sys; sys.exit(0 if sys.version_info >= (3,11) else 1)' | Out-Host
-                if ($LASTEXITCODE -eq 0) { $python = $command.Source; break }
-            }
-        }
-        if (-not $python) { throw 'Python 3.11 이상을 사용자가 먼저 설치하고 다시 확인해 주세요. 자동 설치하지 않습니다.' }
-        # Native preflight, immutable deployment and transactional connection updates
-        # remain owned by the verified bundled install_sev.py.
-        $script = 'scaffold.py'
-        $arguments = @('--target', $Target, '--adopt', '--no-autostart')
-        if ((Test-Path -LiteralPath (Join-Path $Target 'AGENTS.md') -PathType Leaf) -and
-            (Test-Path -LiteralPath (Join-Path $Target '.ai/models.yaml') -PathType Leaf)) {
-            $script = 'install_sev.py'
-            $arguments = @('--target', $Target, '--no-autostart')
-        }
-        & $python (Join-Path $Directory $script) @arguments | Out-Host
-        if ($LASTEXITCODE -ne 0) { throw '설치가 실패했습니다. 기존 연결은 보존됩니다. 준비사항과 권한을 확인한 뒤 다시 실행해 주세요.' }
-    }
-
-    function Assert-StarterInstalled([string]$Target, [string]$Version) {
-        $configPath = Assert-StarterPath (Join-Path $Target '.ai/sev.json')
-        $config = [IO.File]::ReadAllText($configPath) | ConvertFrom-Json
-        if ($config.version -cne $Version) { throw '설치 후 버전 확인에 실패했습니다.' }
-        foreach ($key in @('python', 'service', 'state', 'runner', 'project_runner')) {
-            if (-not $config.$key -or -not [IO.Path]::IsPathRooted($config.$key) -or
-                -not (Test-Path -LiteralPath (Assert-StarterPath $config.$key) -PathType Leaf)) {
-                throw "설치 후 필수 경로 확인에 실패했습니다: $key"
-            }
         }
     }
 
@@ -228,13 +177,13 @@ try {
             if (-not $releaseEntry -or $releaseEntry.Length -gt 1MB) { throw 'Missing/invalid release metadata.' }
             $reader = New-Object IO.StreamReader($releaseEntry.Open())
             try { $release = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
-            if ($release.version -ne '0.3.3' -or -not $release.sha256) { throw 'Expected starter release 0.3.3.' }
+            if ($release.version -ne '0.4.0' -or -not $release.sha256) { throw 'Expected starter release 0.4.0.' }
             if ($Snapshot) { Assert-StarterReleaseMatch $Snapshot $release }
             $hashes = @($release.sha256.PSObject.Properties)
             if ($hashes.Count -ne ($entries.Count - 1)) { throw 'Release manifest does not cover every ZIP file.' }
-            $required = @('SKILL.md', 'scripts/bootstrap.ps1', 'scripts/scaffold.py', 'scripts/install_sev.py',
-                'assets/runner/SKILL.template.md', 'assets/runner/run.py', 'assets/sev/setup_model.py',
-                'assets/sev/sev_service.py', 'assets/sev/requirements.txt', 'assets/starter/AGENTS.md',
+            $required = @('SKILL.md', 'scripts/bootstrap.ps1', 'scripts/scaffold.py', 'scripts/install_rev.py',
+                'assets/runner/SKILL.template.md', 'assets/runner/run.py', 'assets/rev/loader.py',
+                'assets/rev/service.py', 'contracts/upstream.lock.json', 'assets/starter/AGENTS.md',
                 'assets/starter/PROJECT.md', 'assets/starter/.ai/models.yaml')
             foreach ($name in $required) {
                 if (-not $entries.ContainsKey("universal-ai-starter/$name")) { throw "Missing bundled asset: $name" }
@@ -270,79 +219,62 @@ try {
         } finally { $zip.Dispose(); $stream.Dispose() }
     }
 
-    # Select/cancel before ZIP download, skill changes or project writes.
-    if ($Manager -and [string]::IsNullOrWhiteSpace($Target)) {
-        [pscustomobject]@{schema=1; status='cancelled'; exitCode=2} | ConvertTo-Json -Compress
-        $script:starterExitCode = 2
-        return
+
+$stage=$null
+try {
+    if ($Manager -and ($RuntimeRoot -or $ConnectionFile -or $Migrate)) { throw '관리기 소스 설치에서는 실행 연결을 변경하지 않습니다.' }
+    if (-not $Target) { throw '명시적 -Target이 필요합니다.' }
+    if (-not $BundlePath -and -not $ArchivePath -and -not $SnapshotCommit) {
+        $SnapshotCommit=Resolve-StarterCommit
     }
-    $Target = Select-StarterTarget $Target
-    if (-not $Target) { Write-Host 'Installation cancelled; no project files written.'; $script:starterExitCode = 2; return }
-    $snapshot = $null
-    if ($Manager) { $snapshot = Get-StarterSnapshot $SnapshotCommit $ExpectedVersion }
-    $skills = Assert-StarterPath (Join-Path $HOME '.agents/skills')
-    $runtime = Assert-StarterPath (Join-Path $HOME '.codex/sev')
-    foreach ($protected in @($skills, $runtime, [IO.Path]::GetTempPath().TrimEnd('\'))) {
-        if ($Target.TrimEnd('\') -eq $protected.TrimEnd('\') -or
-            $Target.StartsWith($protected.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or
-            $protected.StartsWith($Target.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
-            throw 'Project folder must not overlap skills, shared runtime or temporary storage.'
+    if (([int][bool]$BundlePath + [int][bool]$ArchivePath + [int][bool]$SnapshotCommit) -ne 1) { throw 'BundlePath, ArchivePath, SnapshotCommit 중 하나만 사용하세요.' }
+    $Target=Select-StarterTarget $Target
+    $connect=[bool]($RuntimeRoot -or $ConnectionFile -or $Migrate)
+    if ($connect -and (-not $RuntimeRoot -or -not $ConnectionFile -or $FilesOnly)) { throw '명시적 연결에는 RuntimeRoot와 ConnectionFile이 함께 필요합니다.' }
+    $python=(Get-Command python.exe -ErrorAction Stop).Source
+    if (-not $BundlePath) {
+        $snapshot=$null
+        if ($SnapshotCommit) {
+            $snapshot=Get-StarterSnapshot $SnapshotCommit $ExpectedVersion
+            $bytes=Get-StarterBytes "https://raw.githubusercontent.com/sunhokim1/codex-starter-pack/$SnapshotCommit/distribution/releases/0.4.0/universal-ai-starter.zip" 32MB
+        } else {
+            $archive=Assert-StarterPath $ArchivePath
+            if ((Get-Item -LiteralPath $archive).Length -gt 32MB) { throw 'ZIP too large.' }
+            $bytes=[IO.File]::ReadAllBytes($archive)
         }
-    }
-    $bytes = Get-StarterPublicZip
-    $stage = Assert-StarterPath (Join-Path ([IO.Path]::GetTempPath()) ('starter-' + [Guid]::NewGuid().ToString('N')))
-    $installed = Join-Path $skills 'universal-ai-starter'
-    $backup = Join-Path $skills ('universal-ai-starter.backup-' + [Guid]::NewGuid().ToString('N'))
-    try {
+        $stage=Assert-StarterPath (Join-Path ([IO.Path]::GetTempPath()) ('starter-'+[Guid]::NewGuid().ToString('N')))
         Expand-VerifiedStarter $bytes $stage $snapshot
-        if ($Manager) {
-            Invoke-StarterManagedBundle (Join-Path $stage 'universal-ai-starter/scripts') $Target
-            Assert-StarterInstalled $Target $ExpectedVersion
-            [pscustomobject]@{schema=1; status='installed'; exitCode=0; version=$ExpectedVersion; snapshot=$SnapshotCommit; target=$Target; autostart=$false; personalSkillReplaced=$false} | ConvertTo-Json -Compress
-            return
-        }
-        $null = Assert-StarterPath $installed
-        if (Test-Path -LiteralPath $installed) {
-            if (-not (Test-Path -LiteralPath $installed -PathType Container)) { throw 'Installed skill path is not a directory.' }
-            if (Get-ChildItem -LiteralPath $installed -Force -Recurse | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
-                throw 'Existing skill contains links/reparse points; resolve them before retrying.'
-            }
-        }
-        # Run the verified staged bundle before committing any personal skill change.
-        # The installer checks the actual new venv in the native managed sandbox.
-        $Target = Select-StarterTarget $Target
-        $bootstrapDirectory = Join-Path $stage 'universal-ai-starter/scripts'
-        $bootstrapText = [IO.File]::ReadAllText((Join-Path $bootstrapDirectory 'bootstrap.ps1'), [Text.Encoding]::UTF8)
-        & ([scriptblock]::Create($bootstrapText)) -Target $Target -ScriptDirectory $bootstrapDirectory
-        $null = [IO.Directory]::CreateDirectory($skills)
-        if (Test-Path -LiteralPath $installed) { Move-Item -LiteralPath $installed -Destination $backup }
-        try { Move-Item -LiteralPath (Join-Path $stage 'universal-ai-starter') -Destination $installed }
-        catch {
-            if (Test-Path -LiteralPath $backup) { Move-Item -LiteralPath $backup -Destination $installed }
-            throw
-        }
-        # Preserve the old personal skill backup, including user customizations.
-        if (Test-Path -LiteralPath $backup) { Write-Host "Previous skill preserved at $backup" }
-        Write-Host "Starter 0.3.3 and SEV installed for $Target. Restart Codex to refresh skills."
-    } catch {
-        if (Test-Path -LiteralPath $backup) {
-            if (Test-Path -LiteralPath $installed) {
-                $failed = Join-Path $skills ('universal-ai-starter.failed-' + [Guid]::NewGuid().ToString('N'))
-                Move-Item -LiteralPath $installed -Destination $failed
-            }
-            Move-Item -LiteralPath $backup -Destination $installed
-        }
-        throw
-    } finally {
-        if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+        $BundlePath=Join-Path $stage 'universal-ai-starter'
     }
-} $Target ([bool]$Manager) $SnapshotCommit $ExpectedVersion
-} catch {
-    $starterExitCode = 1
-    if ($Manager) {
-        # Do not serialize exception text: it may contain private paths or process output.
-        [pscustomobject]@{schema=1; status='error'; exitCode=1; message='설치 또는 검증에 실패했습니다. 준비사항과 네트워크를 확인하고 다시 실행해 주세요.'} | ConvertTo-Json -Compress
-        Write-Warning '관리기 설치 실패: Python 3.11+, Codex CLI 준비, 네트워크와 권한을 확인해 주세요. 자동 승격하지 않습니다.'
-    } else { throw }
+    $BundlePath=Assert-StarterPath $BundlePath
+    # Verify the full bundle before project writes, including local directory input.
+    & $python -B -c 'import sys;sys.path.insert(0,sys.argv[1]);from install_rev import verify_bundle;from pathlib import Path;verify_bundle(Path(sys.argv[2]))' (Join-Path $BundlePath 'scripts') $BundlePath
+    if ($LASTEXITCODE -ne 0) { throw '번들 무결성 오류' }
+    if (-not $connect) {
+        $arguments=@('-B',(Join-Path $BundlePath 'scripts/install_rev.py'),'--target',$Target,'--source-only')
+        if ($SnapshotCommit) { $arguments+=@('--snapshot',$SnapshotCommit) }
+        $lines=@(& $python @arguments)
+        if ($LASTEXITCODE -ne 0) { throw '소스 설치를 중단했습니다. 기존 연결·설정·기록은 보존됩니다.' }
+        $result=$lines[-1] | ConvertFrom-Json
+        if (($result.version -cne $ExpectedVersion -and $result.source_status -cne 'newer') -or $result.source_status -cnotin @('installed','current','newer') -or $result.rev_status -cne 'preparation_needed') { throw 'Invalid source result.' }
+        if ($Manager) {
+            if ($result.source_status -ceq 'newer') { throw 'Stage downgrade refused.' }
+            @{schema=1;status='installed';exitCode=0;version=$ExpectedVersion;snapshot=$SnapshotCommit;target=$Target;
+              sourceStatus=$result.source_status;revStatus=$result.rev_status;autostart=$false;personalSkillReplaced=$false} | ConvertTo-Json -Compress
+        } else { $lines }
+    } else {
+        $arguments=@('-B',(Join-Path $BundlePath 'scripts/install_rev.py'),'--target',$Target,'--runtime-root',$RuntimeRoot,'--connection-file',$ConnectionFile)
+        if ($Migrate) { $arguments+='--migrate' }
+        & $python @arguments
+        if ($LASTEXITCODE -ne 0) { throw '연결을 중단했습니다. 기존 설정·기록을 보존하고 원인을 확인하세요.' }
+    }
+    exit 0
+} catch { Write-Error $_ -ErrorAction Continue; exit 1 }
+finally {
+    if ($stage -and (Test-Path -LiteralPath $stage)) {
+        $safe=Assert-StarterPath $stage
+        $base=[IO.Path]::GetTempPath().TrimEnd('\')+'\'
+        if (-not $safe.StartsWith($base,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($safe) -notmatch '^starter-[0-9a-f]{32}$') { throw 'Unsafe staging cleanup path.' }
+        Remove-Item -LiteralPath $safe -Recurse -Force
+    }
 }
-if ($Manager) { exit $starterExitCode }

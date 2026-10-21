@@ -10,8 +10,8 @@ try {
     $null = New-Item -ItemType Directory -Force -Path $OutputDirectory
     $output = (Resolve-Path -LiteralPath $OutputDirectory).Path
     $binary = (Resolve-Path -LiteralPath $BinaryPath).Path
-    if ([Diagnostics.FileVersionInfo]::GetVersionInfo($binary).FileVersion -ne '0.1.0.0') {
-        throw '앱 0.1.0 빌드가 필요합니다.'
+    if ([Diagnostics.FileVersionInfo]::GetVersionInfo($binary).FileVersion -ne '0.2.0.0') {
+        throw '앱 0.2.0 빌드가 필요합니다.'
     }
     # Explicit allowlist: never enumerate the repository, diagnostics or user configuration.
     $payload = [ordered]@{
@@ -31,7 +31,7 @@ try {
             }
         } finally { $archive.Dispose() }
     } finally { $stream.Dispose() }
-    $zip = Join-Path $output 'CodexStarterManager-0.1.0-win.zip'
+    $zip = Join-Path $output 'CodexStarterManager-0.2.0-win.zip'
     Move-Item -LiteralPath $temporary -Destination $zip -Force
     $temporary = $null
     $sha = [Security.Cryptography.SHA256]::Create()
@@ -41,7 +41,7 @@ try {
         })
     } finally { $sha.Dispose() }
     $manifest = [ordered]@{
-        appVersion = '0.1.0'
+        appVersion = '0.2.0'
         archive = [IO.Path]::GetFileName($zip)
         archiveSha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
         files = $files

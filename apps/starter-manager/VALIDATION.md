@@ -1,43 +1,26 @@
-# 로컬 산출물 검증 기록
+# 로컬 0.2.0 최종 검증 기록
 
-2026-10-20 작업 기준입니다. 설정된 루트 unittest는 controller 소유이며 이 단계에서는 실행하지 않았습니다. 아래는 앱 구현 단계의 로컬 빌드와 진단 기록입니다. 실제 프로젝트 설치는 검증하지 않았습니다. 게시 여부는 [배포 안내](https://github.com/sunhokim1/codex-starter-pack/releases/tag/manager-v0.1.0)에서 확인하세요.
+2026-10-20 자동 소스 설치·업데이트와 Windows/CPU 경로 수정 후의 기록입니다. 공개 앱 0.1.0과 구분하며 게시하지 않았습니다. 설정된 루트 unittest는 controller 소유로 실행하지 않았습니다.
 
-| 구분 | 실제 명령 | 종료코드와 증거 |
-| --- | --- | --- |
-| 요청된 Windows PowerShell 빌드 | `powershell -NoProfile -File .\apps\starter-manager\build.ps1` | 1, 실행 정책에 의해 스크립트 로드 차단 |
-| 허용된 현재 PowerShell 세션의 GUI 빌드 | `& .\apps\starter-manager\build.ps1` | 0, 최종 EXE 62,976바이트 |
-| 별도 코어 빌드 | `& .\apps\starter-manager\build-core.ps1` | 0, 코어 DLL과 진단 EXE 생성 |
-| GUI 동작 fixture | 아래 `Start-Process`에서 `--self-test` | 최종 0, 50 assertions, JSON `status=passed` |
-| 실제 Form 생성 | 아래 `Start-Process`에서 `--smoke-test` | 0, 17 assertions, JSON `actualForm=true` |
-| 코어 fixture와 native 프로세스 smoke | `& .\apps\starter-manager\bin\StarterManager.CoreTests.exe --self-test .` | 0, `PASS: 81 deterministic fixture assertions; native process/byte-lock smoke. No network or real installation.` |
-| 앱 전용 패키징 | `& .\apps\starter-manager\package.ps1` | 0, ZIP과 `dist/artifacts.json` 생성. 문서 갱신 후 다시 패키징하며 최종 크기와 해시는 `artifacts.json` 기준 |
-| 기존 배포 읽기 전용 비교 | `git diff --exit-code HEAD -- distribution universal-ai-starter.zip` | 0, 기존 manifest·릴리스 소스·스타터 ZIP 변경 없음 |
+| 실제 검사 | 결과 |
+| --- | --- |
+| `& apps/starter-manager/build-core.ps1` | 종료 0 |
+| `& apps/starter-manager/build.ps1` | 종료 0 |
+| `StarterManager.CoreTests.exe --self-test <소유 fixture>` | 종료 0, 49 assertions |
+| `CodexStarterManager.exe --self-test <소유 fixture>` | 종료 0, 50 assertions |
+| `CodexStarterManager.exe --smoke-test <소유 fixture>` | 종료 0, 17 assertions |
+| `& apps/starter-manager/package.ps1` | 종료 0, 로컬 0.2.0 ZIP·artifacts.json 생성 |
+| 설치된 Python의 `-m unittest discover -s distribution/releases/0.4.0/universal-ai-starter/tests -p 'test_*.py' -v` | 종료 0, 133개 통과 |
+| 루트·canonical `scripts/package_starter.py --check` | 각각 종료 0, 72개 소스 |
+| 두 빌더의 임시 ZIP과 최종 ZIP | 세 출력 바이트 동일, 73개 항목의 전체 목록·해시·소스 일치 |
+| 작업 시작 116개·이전 보호 113개 지문 | private 설정, 보관 릴리스·ZIP 및 루트 ZIP 변경 없음 |
 
-GUI 진단은 각각 다음 명령을 사용했습니다. 각 프로세스의 `ExitCode`와 결과 JSON을 확인했습니다.
+GUI는 `Start-Process -WindowStyle Hidden -PassThru`로 소유 프로세스만 생성하고 45초 제한으로 완료를 기다려 실제 종료 코드와 JSON을 수집했습니다. 네트워크·실제 프로젝트 설치·사용자 설정 쓰기를 사용하지 않았습니다. 코어 fixture는 신규 자동 설치·Rev 부재 업데이트·현재 no-op·내용 보존·변경/활성/불확실 상태 차단·취소·복구·고정 설치기 해시·소유 프로세스 완료를 확인합니다. Windows CPU/CUDA 로더·서비스는 실제 인터페이스를 호출하되 무거운 모델·의존성을 mock으로 대체합니다.
 
-```powershell
-$app = Join-Path $PWD 'apps/starter-manager/dist/CodexStarterManager.exe'
-$check = Start-Process -FilePath $app -ArgumentList '--self-test', '.' -WindowStyle Hidden -PassThru -Wait
-$check.ExitCode
-Get-Content .\self-test-result.json
-$check = Start-Process -FilePath $app -ArgumentList '--smoke-test', '.' -WindowStyle Hidden -PassThru -Wait
-$check.ExitCode
-Get-Content .\smoke-test-result.json
-```
+첫 Windows PowerShell 자식 빌드는 기본 실행 정책으로 종료 1이었습니다. 정책 변경 없이 허용된 현재 PowerShell에서 빌드했습니다. 기본 `git diff --check`는 기존 CRLF를 공백 오류로 보고했고, 설정 변경 없는 `git -c core.whitespace=cr-at-eol diff --check`는 종료 0입니다.
 
-최종 JSON 두 파일은 배포에서 제외되는 `bin/`으로 옮겼습니다. 최초 GUI self-test는 14번째 assertion에서 `InvalidOperationException`으로 실패했습니다. 진단용 `DoEvents`가 임시 메시지 루프 종료 시 WinForms 동기화 컨텍스트를 해제할 수 있어, 진단 STA 컨텍스트를 유지하도록 수정하고 GUI EXE를 다시 빌드한 후 재검증했습니다. 운영용 `Application.Run` 경로는 변경하지 않았습니다. 실행 정책은 변경하거나 우회하지 않았습니다.
+앱 ZIP은 정확히 `CodexStarterManager.exe`, `README.md`만 포함합니다. 크기·파일 SHA256·전체 ZIP SHA256이 `dist/artifacts.json`과 일치합니다. 상세 근거는 `.ai/reports/integration-final-evidence.json`, 번들 로그는 `.ai/reports/integration-bundle-tests.log`입니다.
 
-ZIP을 읽기 전용으로 열어 내부 경로가 정확히 `CodexStarterManager.exe`, `README.md`인지 확인했고, 각 항목의 크기·SHA256 및 ZIP 전체 SHA256을 `artifacts.json`과 대조해 통과했습니다. 이 두 파일 외의 workflow state·설정·비밀값·진단 결과는 포함되지 않습니다. 기본 `git diff --check`는 기존 변경 파일의 CRLF를 공백 오류로 보고해 2를 반환했습니다. 설정 파일을 수정하지 않고 `git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff --check`로 CRLF를 인정한 검사는 0을 반환했습니다.
+최종 스타터 ZIP SHA256은 `d69d669ab7b17f0678b128f33322e89d315c78e1133fe97f07c9cd047c32ae1d`입니다. 원본은 `distribution/releases/0.4.0/universal-ai-starter/`, 출력은 `distribution/releases/0.4.0/universal-ai-starter.zip`입니다.
 
-## controller가 확인할 회귀 범위
-
-| 요구사항 | 검사 근거 | 검증 경계 |
-| --- | --- | --- |
-| 버전 숫자 비교·미설치·동일·업데이트·손상·downgrade 금지 | `CoreSelfTest.cs` | 네트워크와 설치기는 fixture |
-| 네트워크 실패·불완전 설치·특수문자·잠금 | 코어 fixture와 `tests/test_starter_manager.py` | byte 잠금·프로세스는 실제, 다운로드는 mock |
-| 프로젝트 내용 보존·실패 복원·중단 복구·동시 편집 충돌 | 코어 fixture | 임시 프로젝트에만 쓰기 |
-| 폴더 기억·취소·재시도·닫기 대기·오류 표시 | `AppDiagnostics.cs` | 실제 Form과 가짜 작업 |
-| ZIP 범위·해시·EXE와 문서 일치 | 새 패키지 회귀 | controller 실행 전 |
-| 기존 installer·native preflight·bundled regressions | 기존 루트 테스트와 새 `test_bundled_regressions.py` 연결 | controller 실행 전, 설치·모델 호출은 mock |
-
-설정된 검사를 통과했다고 보고하지 않습니다. controller의 최종 결과 확인이 남아 있습니다. 라이브 네트워크, 실제 설치·로그인·서비스 readiness, 모든 Windows 환경의 실행 정책과 권한, 화면 배치 육안 검수, 장시간 실제 설치 상호작용은 이번 오프라인 검증의 범위 밖입니다. Desktop Starter·설치된 runtime·개인 skills·자동시작과 사용자 설정을 변경하지 않았습니다.
+읽기 전용 진단에서 총 RAM 15.69GiB·가용 7.29GiB, Intel Iris Xe, NVIDIA 관측 없음입니다. CPU fp32 추정 39.53GiB에 부족하며 OS 금지가 아닙니다. 환경 lock 완성·실제 모델 준비/다운로드/로드/추론·원격 0.4.0 게시·controller 최종 루트 검사 결과는 이 검증에 포함하지 않습니다. 기존 사용자 설치·프로젝트·개인 runtime/skills·startup·인증·ACL은 변경하지 않았습니다.

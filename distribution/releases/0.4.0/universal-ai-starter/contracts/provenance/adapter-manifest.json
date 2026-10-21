@@ -1,0 +1,25 @@
+{
+  "models": {
+    "2b": [
+      "Qwen/Qwen3.5-2B",
+      "15852e8c16360a2fea060d615a32b45270f8a8fc"
+    ],
+    "4b": [
+      "Qwen/Qwen3.5-4B",
+      "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"
+    ],
+    "9b": [
+      "Qwen/Qwen3.5-9B",
+      "c202236235762e1c871ad0ccb60c8ee5ba337b9a"
+    ],
+    "27b": [
+      "Qwen/Qwen3.8-27B",
+      "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+    ]
+  },
+  "max_tokens": 4096,
+  "train_sha256": "202f146c11928dc0f8aa5740cf47865e06e71b467c4a7ef85a4d65a5b78ea7d9",
+  "holdout_sha256": "e743dfc0b4ab614c65535c759c6d234ccd45b8ab26c8d99e1bea5bd2ab6ba93c",
+  "train_rows": 26077,
+  "holdout_rows": 975
+}

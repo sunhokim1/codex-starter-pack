@@ -15,12 +15,12 @@ class PackageStarterTests(unittest.TestCase):
         root = SCRIPT.parents[1]
         mapping = json.loads((root / 'distribution/manifest.json').read_text())
         self.assertEqual(mapping['template_files'], [])
-        canonical = root / 'distribution/releases/0.3.3/universal-ai-starter'
+        canonical = root / 'distribution/releases/0.4.0/universal-ai-starter'
         release = json.loads((canonical / 'release.json').read_text())
-        self.assertEqual(release['version'], '0.3.3')
+        self.assertEqual(release['version'], '0.4.0')
         expected = {'universal-ai-starter/' + name for name in mapping['skill_files']}
         self.assertEqual(set(release['sha256']), expected)
-        self.assertIn('universal-ai-starter/tests/test_sandbox_preflight.py', expected)
+        self.assertIn('universal-ai-starter/tests/test_distribution.py', expected)
         for name, source in mapping['skill_files'].items():
             self.assertEqual(root / source, canonical / name)
             self.assertEqual(hashlib.sha256((root / source).read_bytes()).hexdigest(),
@@ -32,12 +32,21 @@ class PackageStarterTests(unittest.TestCase):
                                         capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual(outputs[0].read_bytes(), outputs[1].read_bytes())
-            self.assertEqual(outputs[0].read_bytes(), (root / 'universal-ai-starter.zip').read_bytes())
+            self.assertEqual(outputs[0].read_bytes(), (root / 'distribution/releases/0.4.0/universal-ai-starter.zip').read_bytes())
             with zipfile.ZipFile(outputs[0]) as archive:
                 self.assertEqual(set(archive.namelist()), expected | {'universal-ai-starter/release.json'})
                 self.assertEqual(json.loads(archive.read('universal-ai-starter/release.json')), release)
                 for name in expected:
                     self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(), release['sha256'][name])
+
+    def test_active_output_cannot_replace_archives_or_source_metadata(self):
+        root=SCRIPT.parents[1]
+        for name in ('universal-ai-starter.zip', 'distribution/releases/0.3.3/universal-ai-starter/release.json',
+                     'distribution/releases/0.4.0/universal-ai-starter/release.json'):
+            path=root/name;before=path.read_bytes()
+            result=subprocess.run([sys.executable,str(SCRIPT),'--output',str(path),'--check'],capture_output=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertEqual(path.read_bytes(),before)
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

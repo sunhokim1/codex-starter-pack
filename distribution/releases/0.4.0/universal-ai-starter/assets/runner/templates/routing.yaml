@@ -1,0 +1,17 @@
+selection: rev
+backend: codex_cli
+automatic_recovery: false
+parallel_agents: false
+recovery:
+  sequence:
+    worker: main
+    main: escalation
+    escalation: null
+  models:
+    worker: gpt-6-luna
+    main: gpt-6.1-sol
+    escalation: gpt-6-astra
+  max_retries: 1
+  max_escalations: 2
+  max_replans: 1
+  max_tokens: 2000000

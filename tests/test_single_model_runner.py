@@ -1,4 +1,7 @@
 """Observable invariants for the opt-in runner; no paid model calls."""
+import sys
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]/"distribution/releases/0.3.3/universal-ai-starter/assets/runner"))
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]/"distribution/releases/0.3.3/universal-ai-starter/scripts"))
 import importlib.util
 import json
 from pathlib import Path
@@ -7,7 +10,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-MODULE = Path(__file__).resolve().parents[1] / 'experiments/single-model-runner/scripts/run.py'
+MODULE = Path(__file__).resolve().parents[1] / 'distribution/releases/0.3.3/universal-ai-starter/assets/runner/run.py'
 spec = importlib.util.spec_from_file_location('single_model_runner', MODULE)
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
